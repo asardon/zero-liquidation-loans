@@ -1,0 +1,628 @@
+\documentclass[a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{pgfplots}
+\usepackage{tikz}
+\usepackage{acronym}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{booktabs}
+\usepackage{bigfoot}
+\usepackage{cprotect}
+\usepackage{cancel}
+\usepackage{subcaption}
+\usepackage{url}
+\usepackage{hyperref}
+\usepackage[capitalise]{cleveref}
+
+\usepackage{draftwatermark}
+\SetWatermarkText{Draft}
+\SetWatermarkScale{5}
+
+\setlength{\tabcolsep}{8pt}
+
+\title{Zero-Liquidation Loans}
+\author{Aetienne Sardon}
+
+\date{September 2021}
+
+\begin{document}
+
+\maketitle
+
+\input{acronym}
+\input{commands}
+
+\begin{abstract}
+Zero-Liquidation loans allow users to borrow \verb|USDC| against their \verb|ETH| holdings, but without the risk of being liquidated in case of LTV shortfalls. This is achieved by giving users the option to repay their loans, either in \verb|USDC| or through their previously pledged \verb|ETH| (the concept can be generalized to other currency pairs as well). Liquidity providers, on the other hand side, are compensated with a higher yield for bearing the \verb|ETH| downside risk. A positive side effect of zero-liquidation loans is that they are more robust against flash crashes and have a lower financial contagion effect than current lending and borrowing protocols. %This downside risk is distributed between junior and senior tranche holders, where losses are first absorbed by junior and subsequently by senior tranche holders, allowing liquidity providers to invest into these tranches separately according to their risk preferences.
+\end{abstract}
+
+\section{Introduction}
+The demand for crypto-collateralized lending and borrowing in DeFi has surged, recently surpassing a TVL of \$40bn in 2021 \cite{aave} \cite{compound}. However, with currently available borrowing products borrowers face two pain points: (1) liquidations and (2) variability in rates. While some solutions already exist to alleviate (2), there currently aren't any products to spare users from (1). Zero-Liquidation loans solve both.\\
+
+On a YTD basis there have been 9,023 liquidations on Aave with a 7-day liquidation amount of approx. \$37mn \cite{dune}. Liquidations occur when the collateral that borrowers pledge suddenly drops in value. Borrowers, who fail to prevent LTV shortfalls face the risk of having their collateral liquidated and being penalized with liquidation fees. Moreover, commonly used incentive mechanisms tend to favor liquidators over borrowers, causing the problem of so called over-liquidation, leading to unnecessary high losses for borrowers \cite{qin}. In order to avoid liquidations, borrowers need to constantly monitor their LTV and remain alert to quickly respond to changing market conditions. When there are many users with a leveraged long position in the collateral currency, even a random dip in market prices can cause a whole cascade of liquidations, leading to a self-accelerating selling pressure. Such market situations may lead to network congestion and hiking gas costs, as has been the case in the \verb|ETH| market collapse of March 13th 2020 \cite{qin}, leaving some borrowers unable to react despite imminent liquidations. For borrowers who got liquidated it can be particularly annoying if market prices recover after a dip again, leaving them deprived from subsequent upward price participation.\\
+%In times of heightened market stress, this can trigger a downward spiral in market prices. 
+
+
+%gas fees, aavewatch statistics, longer durations, interest rate risk + price risk, particularly interesting for liquidity providers who would are fine with, worst case, acquiring the underlying collateral, infinite liquidity, less liquidation contagion / downward market pressure
+
+\section{Zero-Liquidation Loans}
+\label{sec:zero_liquidation_loans}
+Zero-Liquidation loans resemble so called \emph{double currency notes}, which give borrowers the option to repay a loan in either one of two currencies (e.g., \verb|ETH| or \verb|USDC|). This allows users to borrow funds against their crypto holdings, but without being exposed to any liquidation risk. Liquidity providers, on the other hand side, are compensated with a higher yield.\\
+
+Zero-liquidation loans stand in contrast to currently existing lending and borrowing solutions in DeFi, where users need to constantly monitor their LTV, and hedge against potential shortfalls to avoid having to pay liquidation penalty fees \cite{willtoshower} \cite{interoperate}. \cref{fig:aave_vs_zero_liquidation} illustrates the differences between an Aave and a zero-liquidation loan. It can be seen that borrowers on Aave will have their \verb|ETH| collateral liquidated every time the LTV reaches the liquidation threshold (e.g., 80\%). As a result, an Aave borrower's \verb|ETH| holding will be reduced if the \verb|ETH| price falls to a certain threshold, even if the price moves up again afterwards. In addition, borrowers will be charged a fee every time a liquidation happens. In contrast, with zero-liquidation loans the borrowers' \verb|ETH| holdings remain constant and they don't incur any liquidation fees. At the same time, borrowers still have full upside and only owe the initially borrowed amount or the pledged collateral, whichever is lower.
+
+\begin{figure}
+    \centering
+    \includegraphics[width=1.0\textwidth]{figures/aave_vs_zero_liquidation.png} 
+    \cprotect\caption{\small Stylized comparison of an Aave vs. a zero-liquidation loan, given an initial loan amount of \verb|2,000 USDC| against \verb|1 ETH| in collateral at a spot price of \verb|4,000 ETH/USDC|, with a LTV threshold of 80\% and liquidation penalty fee of 5\%.}
+    \label{fig:aave_vs_zero_liquidation}
+\end{figure}
+
+\subsection{Borrower's Perspective}
+\label{sec:borrower_perspective}
+Assume Bob wants to take out a 90 day loan against his crypto holdings of \verb|1 ETH|, where \verb|1 ETH| is currently worth \verb|4,000 USDC|. With a zero-liquidation loan, he pledges \verb|1 ETH| and receives, e.g., \verb|1,850 USDC| against it as a loan (the exact amount will depend on supply and demand). Then, after 90 days he has the option to reclaim his collateral for a pre-agreed repayment amount of, e.g., \verb|2,000 USDC|. The repayment amount includes the interest cost and is thus higher than the amount previously paid out. So Bob effectively has fixed borrowing costs of \verb|150 USDC|, with an implied APR of 30\%. However, in contrast to existing DeFi lending solutions, like Aave or Compound, Bob isn't exposed to changing borrowing costs and, more importantly, is spared from liquidations. This is because Bob can later choose whether he wants to repay his loan in \verb|USDC| or \verb|ETH|.\\
+
+More specifically, after 90 days Bob can either pay back \verb|2,000 USDC| and receive his originally pledged \verb|1 ETH| back, or, alternatively, simply walk away from the loan. Naturally, Bob will chose whatever option is better for him, i.e., if the price of \verb|1 ETH| is higher than \verb|2,000 USDC|, then he will chose to repay the loan in \verb|USDC|, whereas, if the price of \verb|1 ETH| is below \verb|2,000 USDC| he will be better off leaving his \verb|1 ETH| collateral to the lender, which effectively means he's repaying in \verb|ETH|. Bob's resulting payoff is illustrated in \cref{fig:zero_liquidation_loan}. It can be seen that, even if the \verb|ETH| price drops below \verb|2,000 USDC|, his downside is capped because by having borrowed \verb|1,850 USDC| he has reduced his \verb|ETH| exposure to \verb|4,000 USDC - 1,850 USDC = 2,150 USDC|.\\
+
+Note that while Bob isn't exposed to any liquidation penalty fees, he still has full \verb|ETH| upside. Bob obviously can use the borrowed \verb|1,850 USDC| for whatever he wants, e.g., yield farming or also leveraging his \verb|ETH| position by repeating the previously described borrowing procedure, analogous to how user do it today on lending and borrowing platforms like Aave etc. 
+
+\begin{figure}
+\begin{tikzpicture}[scale = 0.68]
+    \begin{axis}[
+        axis x line=middle,
+        axis y line=middle,
+        axis line style = ultra thick,
+        grid = major,
+        width=16cm,
+        height=8cm,
+        grid style={dashed, gray!30},
+        xmin=0,     % start the diagram at this x-coordinate
+        xmax=7000,    % end   the diagram at this x-coordinate
+        ymin=-3000,     % start the diagram at this y-coordinate
+        ymax=3000,   % end   the diagram at this y-coordinate
+        xlabel style={at={(1,0.48)},above right,yshift=5pt},
+        ylabel style={at={(0,1)},above,yshift=10pt},
+        xticklabel style={
+                /pgf/number format/fixed,
+                /pgf/number format/precision=2
+        },
+        scaled x ticks=false,
+        yticklabel style={
+                /pgf/number format/fixed,
+                /pgf/number format/precision=2
+        },
+        scaled y ticks=false,
+        xlabel=\textbf{ETH/USDC},
+        ylabel=\textbf{PnL in USDC},
+		/pgfplots/xtick={0, 1000, 2000, 3000, 4150, 5000, 6000, 7000}, 
+		/pgfplots/ytick={-3000, -2150, -1000, 0, 1000, 2000, 3000}, 
+        tick align=outside,
+        enlargelimits=false]
+      % plot the function
+      \addplot[domain=0:2000, magenta, thick,samples=100] {-150-2000};
+      \addplot[domain=2000:7000, magenta, thick,samples=100] {(x-2000)-2150} node[left,pos=0.8,yshift=8pt] {Borrower};
+      %\addplot[domain=4000:7000, red, thick,samples=100] {690};
+      %\addplot[domain=0:4000, red, thick,samples=100] {+(x-3310)} node[left,pos=0.96] {Zero-Liquidation Deposit};
+	  %\addplot[thick,dotted, samples=50, smooth,domain=3310:3310,black] coordinates {(3310,-1000)(3310,4000)};
+	  %\node[label={180:{Loan amount}},inner sep=2pt] at (axis cs:3310,2000) {};
+	  \end{axis}
+\end{tikzpicture}
+\caption{\small Bob's loan PnL after 90 days, assuming a loan amount of 2,000 USDC, secured with 1 ETH (worth 4,000 USDC at inception), and interest costs of 150 USDC.}
+\label{fig:zero_liquidation_loan}
+\end{figure}
+
+%\subsection{Lender's Perspective}
+%\label{sec:lender_perspective}
+%...
+
+
+\subsection{Liquidity Provider's Perspective}
+Assume Larry holds \verb|2,000 USDC| and wants to boost his APY. He provides his \verb|USDC| to the Zero-Liquidation loan pool and receives a corresponding pro-rata share of the pool's PnL. For example, assume the pool currently has a TVL of \verb|4,000 USDC|, then Larry's pledged liquidity corresponds to a 50\% share. If now someone borrows, e.g., \verb|2,000 USDC| for 90 days from this pool at a borrowing cost of \verb|150 USDC| (see example in \cref{sec:borrower_perspective}), then Larry will be entitled to a 50\% pro-rata share of the thereof resulting PnL.\\
+
+More specifically, if after 90 days the \verb|ETH| price is above \verb|2,000 USDC| then the pool will have earned \verb|150 USDC|, in which case Larry will be credited \verb|75 USDC| (i.e., his 50\% share), implying a 15\% APY. Only if the \verb|ETH| price drops by more than 50\% (the initial LTV), i.e., below \verb|2,000 USDC|, Larry will suffer a loss, which, however, is capped at \verb|-925 USDC|, i.e., even in the most adverse scenario where the \verb|ETH| price drops to zero. \cref{fig:zero_liquidation_loan_deposit} shows the resulting payoff.
+
+\begin{figure}
+\begin{tikzpicture}[scale = 0.68]
+    \begin{axis}[
+        axis x line=middle,
+        axis y line=middle,
+        axis line style = ultra thick,
+        grid = major,
+        width=16cm,
+        height=8cm,
+        grid style={dashed, gray!30},
+        xmin=0,     % start the diagram at this x-coordinate
+        xmax=7000,    % end   the diagram at this x-coordinate
+        ymin=-1000,     % start the diagram at this y-coordinate
+        ymax=200,   % end   the diagram at this y-coordinate
+        xlabel style={at={(1,0.78)},above right,yshift=5pt},
+        ylabel style={at={(0,1)},above,yshift=10pt},
+        xticklabel style={
+                /pgf/number format/fixed,
+                /pgf/number format/precision=2
+        },
+        scaled x ticks=false,
+        yticklabel style={
+                /pgf/number format/fixed,
+                /pgf/number format/precision=2
+        },
+        scaled y ticks=false,
+        xlabel=\textbf{ETH/USDC},
+        ylabel=\textbf{PnL in USDC},
+		/pgfplots/xtick={0, 1000, ..., 7000}, 
+		/pgfplots/ytick={-1000, -925, -500, 0, 75, 200}, 
+        tick align=outside,
+        enlargelimits=false]
+      % plot the function
+      \addplot[domain=0:2000, blue, thick,samples=100] {-1000+x*0.5+75};
+      \addplot[domain=2000:7000, blue, thick,samples=100] {75} node[above,pos=0.58] {Liquidity Provider};
+	  %\addplot[thick,dotted, samples=50, smooth,domain=3310:3310,black] coordinates {(3310,-1000)(3310,4000)};
+	  %\node[label={180:{Loan amount}},inner sep=2pt] at (axis cs:3310,2000) {};
+	  \end{axis}
+\end{tikzpicture}
+\caption{\small Larry's PnL after 90 days, assuming interest earnings of 150 USDC and a pool share of 50\%.}
+\label{fig:zero_liquidation_loan_deposit}
+\end{figure}
+
+\section{Option Representation}
+Another way to think about crypto-collateralized loans is to view them as options. \cref{sec:zero_liquididation_loans_and_vanilla_options} and \cref{sec:aave_loans_and_barrier_options} describe how users can synthetically replicate crypto-collateralized loan payoffs using different types of options. Note, however, that these replication strategies shall only serve as a mental model to help later construct the AMM (see \cref{sec:AMM}), but may have shortcomings when used in practice.\footnote{For example, for users who want to physically hold the underlying such replication strategies create transactional overhead and costs. I.e., a user would have to sell the collateral, buy a corresponding option, and, eventually, buy back the collateral in case the option is cash-settled.}
+%Moreover, option markets tend to have fixed expiry dates (e.g., every quarter), which can make it more challenging for borrowers to find options that match their target borrowing time horizon (e.g., 1 week). Therefore, the herein mentioned zero-liquidation loans (and the embedded options) shall instead be offered with constant tenors.
+
+\subsection{Zero-Liquidation Loans and Vanilla Options}
+\label{sec:zero_liquididation_loans_and_vanilla_options}
+A user borrowing through a zero-liquidation loan is equivalent to a user that initially holds a crypto asset, then sells it in the spot market, buys an option on it and keeps the difference between the underlying sale proceeds and the option purchase price as a short term funding source. In other words, a zero-liquidation loan borrower can be represented as someone holding some underlying that he wants to swap into a call option and cash amount, i.e.
+\begin{equation}
+\small
+\begin{split}
+Loan &= C_K+K
+\end{split}
+\end{equation}
+% that basically consists of a call option to reclaim the collateral as well as some borrowed amount
+where $C_K$ denotes the call option with strike price $K$ and where $K$ is also equal to borrowed cash amount. This portfolio allows the borrower to maintain his upside on the collateral (=call option), while at the same time receiving a cash amount against it (=strike price).\\ 
+
+\cref{fig:stylized_payoff_diagrams} illustrates the borrower's payoff. It can be seen that the borrower's downside is limited, i.e., even if the underlying's value drops to zero the net asset position is equal to at least the loan amount he was paid out by the lender. This is different to the downside borrowers face with Aave, where adverse price movements in the underlying may cause liquidations and corresponding penalty fees, and, lead to foregone upside participation if prices bounce back after breaching liquidation thresholds.\\
+
+%Borrowers that borrow against their crypto do this in order to maintain an upside participation on the underlying's price appreciation, while, at the same time, freeing up liquidity such that they can invest it elsewhere. The amount of liquidity they receive against their crypto collateral can be seen as a down-side protection, i.e., even if the underlying's value drops they can't lose more than the loan amount they were paid out by the lender.\\
+
+On the other hand side, liquidity providers of zero-liquidation loans give borrowers the option to repay either with their pledged collateral or the original loan value. Naturally, borrowers will choose whichever option is better for them. Therefore liquidity providers can expect to receive a repayment amount of
+\begin{equation}
+\small
+\begin{split}
+Repayment &= \min(S_T, K) \\
+&= K-\underbrace{\max(K-S_T, 0)}_{=P_K}
+\end{split}
+\end{equation}
+where $S_T$ denotes the collateral's price at time $T$ and $K$ represents the received loan amount (and $P_K$ a put option). The resulting payoff is shown in \cref{fig:stylized_payoff_diagrams}. 
+
+%So on a net basis, a lender that receives $Repayment_T=K-P$ at time $T$ and pays out the loan amount $K$ at inception $t$ leads to $Net Position=(\cancel{K}-P)-\cancel{K}=-P$, i.e., the liquidity provider being short a put option.
+
+\begin{figure}
+\begin{tikzpicture}[scale = 0.68]
+    \begin{axis}[
+        axis x line=middle,
+        axis y line=middle,
+        axis line style = ultra thick,
+        width=16cm,
+        height=8cm,
+        grid style={dashed, gray!30},
+        xmin=0,     % start the diagram at this x-coordinate
+        xmax=6000,    % end   the diagram at this x-coordinate
+        ymin=0,     % start the diagram at this y-coordinate
+        ymax=6000,   % end   the diagram at this y-coordinate
+        xlabel style={at={(1,0)},above right,yshift=2pt},
+        ylabel style={at={(0,1)},above,yshift=10pt},
+        xticklabel=\empty,
+        scaled x ticks=false,
+        yticklabel=\empty,
+        scaled y ticks=false,
+        xlabel=\textbf{ETH/USDC},
+        ylabel=\textbf{Payoff in USDC},
+		/pgfplots/xtick={},
+		/pgfplots/ytick={}, 
+        tick align=outside,
+        ,extra y ticks={500, 1500, 2000}
+        ,extra y tick style={%
+            ,grid=major
+            ,ticklabel pos=top}
+        ,extra y tick labels={+Interest=, Loan-Interest=, +Loan Value=},
+        ,extra x ticks={2000, 4000}
+        ,extra x tick style={%
+            ,grid=major
+            ,ticklabel pos=top}
+        ,extra x tick labels={Loan Value, Spot Price},
+        enlargelimits=false]
+      % plot the function
+      \addplot[domain=0:2000, magenta, thick,dotted,samples=100] {2000};
+      \addplot[domain=2000:7000, magenta, thick,dotted,samples=100] {2000+(x-2000)} node[below,pos=0.58,yshift=-25pt] {Borrower};
+      \addplot[domain=0:2000, magenta, thick,samples=100] {2000-500};
+      \addplot[domain=2000:7000, magenta, thick,samples=100] {2000+(x-2000)-500};
+      
+      \addplot[domain=0:2000, blue, thick,dotted,samples=100] {x};
+      \addplot[domain=2000:7000, blue, thick,dotted,samples=100] {2000};
+      \addplot[domain=0:2000, blue, thick,samples=100] {x+500};
+      \addplot[domain=2000:7000, blue, thick,samples=100] {2000+500} node[above,pos=0.6,yshift=1.5pt] {Liquidity Provider};
+      
+      %\addplot[thick,dotted,samples=50,smooth,domain=0:6,gray] coordinates {(4000,-4000)(4000,7000)} node[right,pos=0.45,xshift=5pt,rotate=90] {Spot price};
+      %\addplot[thick,dotted,samples=50,smooth,domain=0:6,gray] coordinates {(2000,-4000)(2000,7000)} node[right,pos=0.58,xshift=5pt,rotate=90] {Loan amount};
+      
+	  \end{axis}
+\end{tikzpicture}
+\caption{\small Stylized payoff diagrams for borrowers and liquidity providers in zero-liquidation loans. Note that the interest is essentially the put option premium.}
+\label{fig:stylized_payoff_diagrams}
+\end{figure}
+
+\subsection{Aave Loans and Barrier Options}
+\label{sec:aave_loans_and_barrier_options}
+Not only liquidation loans can be represented through options (see \cref{sec:zero_liquididation_loans_and_vanilla_options}), but in fact, Aave loans as well. The difference, however, is that replicating Aave loans requires a portfolio of barrier options instead of vanilla options.\\
+
+In order to see this, let's assume there's an Aave loan that liquidates 100\% of the collateral in case the liquidation threshold is reached. The resulting payoff is shown in \cref{fig:stylized_payoff_diagram_Aave}. As long as the collateral's price is above the LTV threshold, the borrower participates 1:1 with the underlying price movement. However, in case the LTV barrier is breached, the collateral is liquidated and the user only participates with the remaining collateral. Thus, a user holding a linear combination of a down-and-out call plus a down-and-in call option would have the same payoff. In practice, however, Aave doesn't liquidate 100\% of collateral, but only 50\%. An exact payoff replication would therefore require a linear combination of several multi-barrier options, where the down-and-in and down-and-out barriers would correspond to the subsequent liquidation thresholds.\footnote{For example, in case of a LTV threshold of 80\%, one would need a down-and-out call with a barrier at LTV=80\% and a multi-barrier option with a down-and-in barrier at LTV=80\%, as well as a down-and-out barrier at LTV=64\% (=80\% of 80\%) and half the nominal, and so on.}
+
+\begin{figure}
+\begin{tikzpicture}[scale = 0.68]
+    \begin{axis}[
+        axis x line=middle,
+        axis y line=middle,
+        axis line style = ultra thick,
+        width=16cm,
+        height=8cm,
+        grid style={dashed, gray!30},
+        xmin=0,     % start the diagram at this x-coordinate
+        xmax=6000,    % end   the diagram at this x-coordinate
+        ymin=0,     % start the diagram at this y-coordinate
+        ymax=6000,   % end   the diagram at this y-coordinate
+        xlabel style={at={(1,0)},above right},
+        ylabel style={at={(0,1)},above,yshift=10pt},
+        xticklabel=\empty,
+        scaled x ticks=false,
+        yticklabel=\empty,
+        scaled y ticks=false,
+        xlabel=\textbf{ETH/USDC},
+        ylabel=\textbf{Payoff in USDC},
+		/pgfplots/xtick={},
+		/pgfplots/ytick={}, 
+        tick align=outside,
+        ,extra y ticks={1000}
+        ,extra y tick style={%
+            ,grid=major
+            ,ticklabel pos=top, style={align=center}}
+        ,extra y tick labels={Remaining collateral \\after liquidation},
+        ,extra x ticks={2000, 3000, 4000}
+        ,extra x tick style={%
+            ,grid=major
+            ,ticklabel pos=top, style={align=center}}
+        ,extra x tick labels={Loan\\Value, {Liquidation\\Threshold}, Spot Price},
+        enlargelimits=false]
+      % plot the function
+      \addplot[domain=0:7000, gray, thick,dotted,samples=100] {x+30};
+      \addplot[domain=0:3000, magenta, thick,samples=100] {x/3} node[below,pos=0.58,yshift=-18pt] {Borrower};
+      \addplot[domain=0:3000,thick,samples=50,smooth,magenta] coordinates {(3000,1000)(3000,3000)};
+      \addplot[domain=3000:7000, magenta, thick,samples=100] {x} node[left,pos=0.5,xshift=-8.5pt] {Aave Borrower};
+      \addplot[domain=0:7000, magenta, thick, dotted,samples=100] {x/3} node[above,pos=0.68,yshift=4.5pt] {Aave Borrower after Liquidation};
+	  \end{axis}
+\end{tikzpicture}
+\caption{\small Stylized diagram of a simplified Aave borrower payoff with a 100\% liquidation. The payoff resembles a down-and-out call option, where the liquidation threshold corresponds to the barrier and the loan value to the strike price. After liquidation the payoff is altered because of the decreased crypto collateral position.}
+\label{fig:stylized_payoff_diagram_Aave}
+\end{figure}
+
+
+
+
+
+\iffalse
+\begin{figure}[h]  
+\centering 
+  \begin{subfigure}[b]{0.4\linewidth}
+    \begin{tikzpicture}   
+      \draw[->] (-0.5,0) -- (4,0) node[right] {ETH/USDC};  
+      \draw[->] (0,-0.5) -- (0,4) node[above] {Payoff};  
+      \draw [dashed] (0,0.1) -- (4.,4.1);  
+      \draw (0,0) -- (2,0); 
+      \draw (2,0) -- (2,2);
+      \draw (0,0) -- (2,0);
+      \draw (2,2) -- (4,4);
+    \end{tikzpicture}%
+    \caption{Down-and-out call.} \label{fig:M1}  
+  \end{subfigure}
+  \hfill
+\begin{subfigure}[b]{0.4\linewidth}
+  \begin{tikzpicture}  
+      \draw[->] (-0.5,0) -- (4,0) node[right] {ETH/USDC};  
+      \draw[->] (0,-0.5) -- (0,4) node[above] {Payoff};  
+      \draw [dashed] (0,0.1) -- (4.,4.1);  
+      \draw (0,0) -- (2,2);
+      \draw (2,2) -- (2,0.05);
+      \draw (2,0.05) -- (4,0.05);
+\end{tikzpicture}
+\caption{Down-and-in call.} \label{fig:M2}  
+\end{subfigure}
+\caption{Interaction figures}
+\end{figure}  
+\fi
+
+
+
+
+\section{Automated Market Making}
+\label{sec:AMM}
+As described in \cref{sec:zero_liquididation_loans_and_vanilla_options}, a borrower taking out a zero-liquidation loan is equivalent to a user swapping the underlying $S$ for $C_K+K$. One can use this option-based representation to derive an AMM using the well-known constant product formula.\\
+
+\subsection{Determining borrowable Amounts}
+Let there be an AMM that initially holds $K$ in liquidity and a borrower holding $S$ in crypto (see \cref{fig:amm1}). After taking out a loan, the borrower holds $C_K+K$ and the AMM holds $S-C_K$, i.e., essentially a covered call (see \cref{fig:amm2}).\footnote{Note that, according to the put-call-parity, the AMM's holding is equivalent to $K-P$, which corresponds to the repayment amount described earlier in \cref{sec:zero_liquididation_loans_and_vanilla_options}.}
+
+
+
+
+\begin{figure}
+\begin{center}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% TikzPic1
+\begin{tikzpicture}[thick,scale=0.8, every node/.style={transform shape}]
+
+\node (Borrower) at (0,0) [rectangle,draw,rounded corners,minimum width=3.2cm,minimum height=1.8cm,outer sep=2.8] {\begin{tabular}{c}\textbf{Borrower}\\inventory:\\ $S$\end{tabular}};
+
+\node (AMM) at (6,0) [rectangle,draw,rounded corners,minimum width=3.2cm,minimum height=1.8cm,outer sep=2.8] {\begin{tabular}{c}\textbf{AMM}\\inventory:\\ $K$\end{tabular}};
+
+\end{tikzpicture}
+\caption{Initial state: the borrower holds the underlying $S$ and the AMM has lendable liquidity $K$.}
+\label{fig:amm1}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% TikzPic2
+\begin{tikzpicture}[thick,scale=0.8, every node/.style={transform shape}]
+
+\node (Borrower) at (0,0) [rectangle,draw,rounded corners,minimum width=3.2cm,minimum height=1.8cm,outer sep=2.8] {\begin{tabular}{c}\textbf{Borrower}\\inventory:\\\footnotesize$\cancel{S}\textcolor{red}{-\cancel{S}}$\\\footnotesize$\textcolor{black!30!green}{+(C_K+K)}$\end{tabular}};
+
+\node (AMM) at (6,0) [rectangle,draw,rounded corners,minimum width=3.2cm,minimum height=1.8cm,outer sep=2.8] {\begin{tabular}{c}\textbf{AMM}\\inventory:\\ \footnotesize$\cancel{K}\textcolor{red}{-(C_K+\cancel{K})}$\\\footnotesize$\textcolor{black!30!green}{+S}$\end{tabular}};
+
+\draw [->] (Borrower) edge[bend left] (AMM) node[xshift=86,yshift=48]{$S$};
+\draw [<-] (Borrower) edge[bend right] (AMM) node[xshift=85,yshift=-48]{$C_K+K$};
+
+\end{tikzpicture}
+\caption{Borrower takes out a zero-liquidation loan, which is equivalent to swapping the underlying $S$ for a call option $C_K$ and the loan amount $K$.}
+\label{fig:amm2}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% TikzPic3
+\begin{tikzpicture}[thick,scale=0.8, every node/.style={transform shape}]
+
+\node (Borrower) at (0,0) [rectangle,draw,rounded corners,minimum width=3.2cm,minimum height=2cm,outer sep=2.8] {\begin{tabular}{c}\textbf{Borrower}\\inventory:\\ \footnotesize $\textcolor{black!30!green}{+S}\textcolor{red}{-\cancel{K}}$\\\footnotesize $+(\cancelto{exercised}{C_K}+\cancel{K})$\end{tabular}};
+
+\node (AMM) at (6,0) [rectangle,draw,rounded corners,minimum width=3.2cm,minimum height=2cm,outer sep=2.8] {\begin{tabular}{c}\textbf{AMM}\\inventory:\\ \footnotesize $\textcolor{black!30!green}{+K}+\cancel{S}\textcolor{red}{-\cancel{S}}$\end{tabular}};
+
+\draw [->] (Borrower) edge[bend left] (AMM) node[xshift=86,yshift=48]{$K$};
+\draw [<-] (Borrower) edge[bend right] (AMM) node[xshift=85,yshift=-48]{$S$};
+
+\end{tikzpicture}
+\caption{Repayment scenario $S_T>K$: the borrower repays the loan to reclaim his collateral.}
+\label{fig:amm3}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% TikzPic4
+\begin{tikzpicture}[thick,scale=0.8, every node/.style={transform shape}]
+
+\node (Borrower) at (0,0) [rectangle,draw,rounded corners,minimum width=3.2cm,minimum height=1.8cm,outer sep=2.8] {\begin{tabular}{c}\textbf{Borrower}\\inventory:\\\footnotesize $(\cancelto{unexercised}{C_K}+K)$\end{tabular}};
+
+\node (AMM) at (6,0) [rectangle,draw,rounded corners,minimum width=3.2cm,minimum height=1.8cm,outer sep=2.8] {\begin{tabular}{c}\textbf{AMM}\\inventory:\\ \footnotesize $S$\end{tabular}};
+
+\end{tikzpicture}
+\caption{Repayment scenario $S_T \leq K$: the borrower leaves the option unexercised and walks away from the collateral.}
+\label{fig:amm4}
+\end{center}
+\end{figure}
+
+
+%As described in \cref{sec:relation_to_options}, zero-liquidation loans can be represented as options. More specifically, a borrower can be seen as a user that holds an underlying $S$ and wants to convert this into $C+K$, where $C$ is a call option on the underlying with strike price $K$, where $K$ is equal to the loan value. In other words, the borrower wants to maintain his upside on the collateral (=call option), while at the same time receiving a cash loan value (=strike price), e.g., to invest elsewhere.\\
+
+Now let $Q_S$ denote the quantity of crypto collateral $S$ and $Q_K$ be the quantity of the currency one can borrow from it. Applying the constant product formula we can construct an AMM that swaps $Q_S$ and $Q_K$ according to
+\begin{equation}
+\begin{split}
+(Q_S+\Delta Q_S)(Q_K-\Delta Q_K) &= k
+\end{split}
+\end{equation}
+where $\Delta Q_S$ and $\Delta Q_K$ denote the corresponding quantity changes and $k$ an AMM constant. To better understand how $Q_K$ relates to $C_K+K$, consider the quantity of call options the AMM can offer to borrowers. Obviously, the quantity will depend on $K$, e.g., if $K=0$ the AMM can always write a call option for every $S$ it receives (this is because a call with strike zero is equal to the underlying). So the quantity of options $C_K$ the AMM can write per se isn't limited, however, the amount of liquidity $K$ it can lend is. The key idea therefore is that by letting the AMM dynamically adjust $K$, one is effectively adjusting two things at the same time: the amount users can borrow as well as the strike price (=repayment amount).\\
+
+The more users borrow, the lower the amount the AMM can lend, which essentially means each new borrower will receive a lower loan and, correspondingly, a call with a lower strike price, i.e.,
+\begin{equation}
+\label{eq:more_borrowing_strike}
+\begin{split}
+Q_S\uparrow \Rightarrow Q_K\downarrow \Rightarrow K\downarrow.
+\end{split}
+\end{equation}
+
+On the other hand side, if liquidity increases then the quantity of underlying collateral decreases, and, in turn, the implied strike price and borrowable amount increases, i.e.,
+\begin{equation}
+\label{eq:more_lending_strike}
+\begin{split}
+Q_S\downarrow \Rightarrow Q_K\uparrow \Rightarrow K\uparrow.
+\end{split}
+\end{equation}
+
+\subsection{Determining borrowing Costs}
+\label{sec:borrowing_costs}
+As described in \cref{sec:zero_liquididation_loans_and_vanilla_options}, a user swapping $S$ for $C_K+K$ needs to compensate the AMM for taking on the downside risk. Using the put-call-parity one can see that the swap is fair if
+\begin{equation}
+\begin{split}
+\underbrace{C_K+K-P_K}_{\textrm{what borrower receives}} = \underbrace{S}_{\textrm{what AMM receives}}
+\end{split}
+\end{equation}
+where $P_K$ denotes the put option with strike price $K$. This means that, in order to make no party worse off, the borrower needs to pay the AMM the put option premium $P_K$. Obviously, the put price will depend on several factors, in particular the option's strike price, its time to expiry and the underlying's volatility. However, instead of inferring a price $P_K$ that makes the swap fair, we will assume the put price $P_K\stackrel{!}{=}X$ is given and let the market infer the corresponding $K$ such that
+\begin{equation}
+\label{eq:put_call_parity}
+\begin{split}
+C_K+ \underbrace{K-X}_{\textrm{cash out}} \stackrel{!}{=} S
+\end{split}
+\end{equation}
+where $K-X$ is the net cash amount the borrower effectively receives and $K$ is the amount he has to repay if he wants to reclaim $S$. We will refer to $X$ as the \emph{oblivious put price}. Basically, one could use arbitrary values for $X\in \mathbb R_{\ge 0}$ and always find a solution for \cref{eq:put_call_parity}. However, in order to steer the market towards $K<S$ (i.e., high moneyness of calls $C_K$ and, correspondingly, low LTVs) one can use a put's ATM price as a plausible and easy-to-calculate on-chain value for X, i.e.,
+\begin{equation}
+\begin{split}
+\label{eq:oblivious_put_price}
+X = \alpha \cdot  P_{ATM} = \alpha \cdot 0.4 \cdot  S \cdot \sigma \cdot \sqrt{T-t}
+\end{split}
+\end{equation}
+where $\sigma$ denotes the underlying's volatility, $T-t$ is the option's time to maturity and $0<\alpha<1$ is a scaling factor to steer the market towards $K<S$. Note that $P_K$ is monotonically decreasing in $K$, such that if we set the price $X$ smaller than the put's ATM value, then this implies a higher moneyness of the corresponding call $C_K$. For example, in the extreme case where the \emph{oblivious put price} is $X=0$, the strike level that satisfies \cref{eq:put_call_parity} is $K=0$.\\
+
+So a borrower effectively receives a call option $C_K$ as well as a $CashReceived$ amount from the AMM of
+\begin{equation}
+\begin{split}
+CashReceived=K-X.
+\end{split}
+\end{equation}
+If the borrower wants to reclaim his collateral at expiry he has to pay back $K$. The implied borrowing rate is therefore
+\begin{equation}
+\begin{split}
+R = \frac{X}{K}.
+\end{split}
+\end{equation}
+
+%According to the Black-Scholes model (assuming $r=0$), the price of a put option $P_K$ is given by
+%\begin{equation}
+%\small
+%\begin{split}
+%P_K &= K \Phi(-d_2) - S \Phi(-d1)
+%\end{split}
+%\end{equation}
+
+%where 
+%\begin{equation*}
+%\small
+%\begin{split}
+%d1 &= \frac{ln(S/K)+\sigma^2/2(T-t)}{\sigma \sqrt{T-t}}\\
+%d2 &= d1 - \sigma\sqrt{T-t}
+%\end{split}
+%\end{equation*}
+%and $\sigma$ denotes the underlying's volatility and $\Phi(.)$ is the normal CDF. So obviously, the put price will depend on For an ATM option the price can be approximated
+
+
+
+\subsection{Arbitrage}
+\label{sec:arbitrage}
+Borrowers will have an arbitrage opportunity whenever the to-be-paid \emph{oblivious put price} $X$ is less than what would be fair according to the put-call-parity, i.e.,
+\begin{equation}
+\begin{split}
+\label{eq:arbitrage_borrowers}
+\underbrace{C_K - S}_{\textrm{option's time value}} + K > X \cdot (1+s_{ask})
+\end{split}
+\end{equation}
+where $s_{ask}$ denotes an ask spread parameter, configurable by the AMM. Note that whenever an arbitrage opportunity arises, borrowers will borrow more funds, which according to \cref{eq:more_borrowing_strike} will lead to smaller borrowable amounts per collateral unit and thereby lead to higher implied interest rates, i.e.,
+\begin{equation}
+\begin{split}
+Q_S\uparrow \Rightarrow Q_K\downarrow \Rightarrow K\downarrow \Rightarrow R\uparrow.
+\end{split}
+\end{equation}
+
+Conversely, lenders will have an arbitrage opportunity as soon as the to-be-received \emph{oblivious put price} is larger than what the put-call-parity would imply, i.e.,
+\begin{equation}
+\label{eq:option_premium_lenders}
+\begin{split}
+C_K - S + K < X \cdot (1-s_{bid})
+\end{split}
+\end{equation}
+where $s_{bid}$ denotes a bid spread configured at inception of the AMM. If there's such an arbitrage opportunity then the quantity of collateral units will decrease and the amount of liquidity increase, leading to higher borrowing amounts demanded by the AMM per collateral unit, and, ultimately, to lower implied interest rates, i.e.,
+\begin{equation}
+\begin{split}
+Q_S\downarrow \Rightarrow Q_K\uparrow \Rightarrow K\uparrow \Rightarrow R\downarrow.
+\end{split}
+\end{equation}
+
+\subsection{Numerical Example}
+Let's assume the current \verb|ETH| price is $S_0=4,000$ \verb|USDC|. Further, assume we want to initialize the AMM to provide zero-liquidation loans with an initial $LTV_{init}=50\%$. This can be accomplished by boostrapping the AMM with liquidity contributions $Q_S$ and $Q_K$, such that $Q_S \cdot S_0 = Q_K \cdot LTV_{init}$, i.e., at inception the \verb|ETH| contributions are worth double the \verb|USDC| contributions. For example, if liquidity providers contribute $Q_S=50$ in \verb|ETH| and $Q_K=100,000$ in \verb|USDC| the target LTV is satisfied. In this case, the resulting AMM constant is given by $k=5\cdot10^6$.\\
+
+Further, let $\alpha=0.2$, $S_0=4,000$, $\sigma=100\%$ and $\sqrt{T-t}=1$ such that the initial \emph{oblivious put price} is $X_{init} = 0.2 \cdot 0.4 \cdot 4,000 \cdot 100\% \cdot 1 = 320$ and let the spread be $s=2.5\%$. A borrower could then borrow \verb|1,641 USDC| for \verb|1 ETH|, with a repayment obligation of \verb|1,961 USDC| and an implied borrowing cost of $R=16\%$. Conversely, a lender could receive \verb|1 ETH| for lending \verb|2,041 USDC| and a repayment obligation of \verb|2,345 USDC| with an implied interest rate of $R=13\%$. \cref{tab:example_borrowers} and \cref{tab:example_lenders} provide exemplary terms for borrowing or lending funds to or from the AMM.
+
+\begin{table}[]
+\small
+\begin{tabular}{p{0.5cm}p{2cm}p{2cm}p{2cm}p{2cm}p{1.5cm}}
+\hline
+\textbf{$\Delta Q_S$} & \textbf{borrower's $CashReceived$} & \textbf{borrower's repayment} & \textbf{implied strike} & \textbf{implied LTV} & \textbf{implied interest} \\ \hline
+1                     & 1,641 USDC                  & 1,961 USDC                    & 1,961 USDC              & 50\%                 & 16.3\%                    \\ \hline
+5                     & 7,492 USDC                   & 9,091 USDC                    & 1,818 USDC              & 46\%                 & 17.6\%                    \\ \hline
+10                    & 13,469 USDC                  & 16,667 USDC                   & 1,667 USDC              & 41\%                 & 19.2\%                    \\ \hline
+20                    & 22,175 USDC                  & 28,571 USDC                   & 1,429 USDC              & 35\%                 & 22.4\%                    \\ \hline
+\end{tabular}
+\label{tab:example_borrowers}
+\caption{Numerical example of terms for different borrowing amounts $\Delta Q_S$, assuming $S_0=4,000$.}
+\end{table}
+
+
+\begin{table}[]
+\small
+\begin{tabular}{p{0.5cm}p{2cm}p{2cm}p{2cm}p{2cm}p{1.5cm}}
+\hline
+\textbf{$\Delta Q_S$} & \textbf{lender's $CashPaid$} & \textbf{AMM's repayment} & \textbf{implied strike} & \textbf{implied LTV} & \textbf{implied interest} \\ \hline
+1                     & 2,041 USDC                   & 2,345 USDC             & 2,345 USDC                  & 59\%                 & 13.0\%                    \\ \hline
+5                     & 11,111 USDC                  & 12,632 USDC            & 2,526 USDC              & 63\%                 & 12.0\%                    \\ \hline
+10                    & 25,000 USDC                  & 28,042 USDC            & 2,804 USDC              & 70\%                 & 10.8\%                    \\ \hline
+20                    & 66,667 USDC                  & 72,751 USDC            & 3,638 UDSC              & 91\%                 & 8.4\%                     \\ \hline
+\end{tabular}
+\caption{Numerical example of terms for different lending amounts $CashPaid$, assuming $S_0=4,000$.}
+\label{tab:example_lenders}
+\end{table}
+
+
+\subsection{No-Shortfall Condition}
+The AMM shall always be able to exercise the call options it holds or acquires. Therefore it needs to be ensured that the AMM's liquidity inventory $Q_K$ is sufficient to cover possible repayment costs. This is particularly crucial in case borrowers want to reclaim their collateral, but the AMM has already transferred the corresponding collateral to lenders. In order to prevent any shortfall scenarios, where the AMM wouldn't be able to exercise its own call options and thus be unable to regain and then return outstanding collateral to borrowers, it needs to be ensured that the option premiums paid to lenders (see \cref{eq:option_premium_lenders}) can never exceed the available funds. More specifically,
+\begin{equation}
+\begin{split}
+\small
+\underbrace{ \sum_{i \in \mathcal{L}} \Delta Q_{S,i} \cdot X_i \cdot (1-b_{bid})  + \cancel{\Delta Q_{K,i}} }_{\textrm{worst-case amount to be paid by AMM}} < \underbrace{ Q_{K,0} - \sum_{j \in \mathcal{B}} \Delta Q_{K,j} + \cancel{\sum_{i \in \mathcal{L}} \Delta Q_{K,i}} }_{\textrm{worst-case available liquidity}}
+\end{split}
+\end{equation}
+where $\mathcal{L}$ denotes the list of lenders, $\mathcal{B}$ the list of borrowers and $Q_{K, 0}$ the initially available liquidity at inception of the AMM. Note that the here mentioned \emph{no-shortfall condition} is conservative in that it neglects possible borrower repayments, where actually more liquidity would be available.
+
+%The option premiums that can be paid to lenders shall therefore always satisfy
+%\begin{equation}
+%\begin{split}
+%\small
+%\Delta Q_S \cdot X_i
+%\end{split}
+%\end{equation}
+%in order to prevent any shortfalls.
+
+%\cref{eq:option_premium_lenders
+%It needs to be ensured that the AMM can always return the corresponding collateral units to those borrowers, who decide to reclaim it. Given that the AMM also offers lenders to sell options to the AMM, there is the risk
+
+
+%The AMM shall never pay out option premiums $X$ to lenders that might lead to a situation where the AMM is unable to return collateral to users.
+
+
+%The AMM might pay out more option premiums to lenders than it receives from borrowers. This will be the case if the AMM has borrowed more funds than users and the AMM has transferred more collateral than it has received. This can be problematic in case borrowers want to reclaim their collateral but the AMM doesn't hold a sufficient quantity $Q_S$, and first needs to reclaim a corresponding amount itself from lenders. As long as the lender has sufficient capital to cover the repayment costs, this is unproblematic. However, in case the AMM doesn't have sufficient funds to reclaim its collateral, then this will cause a cascade in which borrowers cannot reclaim their collateral. 
+
+%In order to avoid this, the AMM needs to keep track of the number of collateral units that borrowers could potentially reclaim and ensure that he has sufficient funds to exercise the call options he holds towards lenders to compensate for this. The number of potentially reclaimable collateral units is denoted by $\Delta Q_{S,borrowers}$, the quantity of collateral units associated with lenders is $\Delta Q_{S,lenders}$. The corresponding deficit is given by $(\Delta Q_{S,borrowers}-\Delta Q_{S,lenders})X$, i.e., if the AMM has passed on more collateral than borrowers have pledged there is a potential for a shortfall. To avoid this, it must be ensured that 
+
+
+\subsection{Simulation}
+One can simulate the previously described AMM on historical \verb|ETH/USD| price data. \cref{fig:simulation} illustrates a backtest of a hypothetical 90-day zero-liquidation loan market, where borrowers and lenders trade against the AMM as soon as arbitrage opportunities arise (see \cref{sec:arbitrage}). The plot at the top left shows the price evolution of \verb|ETH| as well as how the implied strike price $K$ changes as borrowers and lenders trade with the AMM. One can see that $K$ tends to stay below the current spot price. This is because in the backtest the parameter for the oblivious put price from \cref{eq:oblivious_put_price} was set to $\alpha=0.5$, implying an ITM option. At expiry, the strike $K$ converges to $S_T$, which is because the oblivious put price and call option go to zero as well, such that \cref{eq:put_call_parity} implies $K=S$.\\
+
+\begin{figure}
+    \centering
+    \includegraphics[width=1.0\textwidth]{figures/simulation_3M_4.png}
+    \cprotect\caption{\small Backtest results of a hypothetical 90-day zero-liquidation loan market.}
+    \label{fig:simulation}
+\end{figure}
+
+The plot at the top right shows the implied borrow and deposit rates. In the backtest, the spread parameters were set to $s_{bid}=0.5$ and $s_{ask}=0.1$. One can see that the spread between the borrow and deposit rates vanishes over time, which is caused by the fact that the spread is applied on the oblivious put price $X$ (see \cref{sec:arbitrage}), which eventually converges to zero. For the same reason the rates themselves also approach zero at expiry.\\
+
+The plot at the bottom left show the arbitrage trades of borrowers and lenders. One can see that at around \verb|2021-03| the \verb|ETH| price drops from \verb|2,000 USD| to \verb|1,500 USD|, which causes borrowers to start trading against the AMM. This is because the price drop causes the oblivious put price to decrease, i.e., $X\downarrow$, creating arbitrage opportunities for borrowers who, according to \cref{eq:arbitrage_borrowers}, start pushing the strike price downwards to reach an equilibrium state again. Conversely, more lenders tend to trade against the AMM in phases of upward trending \verb|ETH/USD| prices.\\
+
+The plot at the bottom right shows the AMM's inventory in $Q_K$ and $Q_S$. One can see that, at inception, the AMM was bootstrapped with an initial $Q_S$ contribution worth \verb|1.5x| the initial $Q_K$ liquidity provisions in USD terms. Over time, the $Q_K$ inventory tends to increase, which is caused by the upward trend in the \verb|ETH/USD| price, that, in turn, creates arbitrage opportunities for lenders, who then start giving liquidity $\Delta Q_K$ and upside $C_K+K$ to the AMM in return for the oblivious put price premium $X$.\\
+
+\begin{figure}
+    \includegraphics[width=.49\textwidth]{figures/simulation_2_dt_10.png}\hfill
+    \includegraphics[width=.49\textwidth]{figures/simulation_2_dt_30.png}
+    \\[\smallskipamount]
+    \includegraphics[width=.49\textwidth]{figures/simulation_2_dt_90.png}\hfill
+    \includegraphics[width=.49\textwidth]{figures/simulation_2_dt_180.png}
+    \caption{Backtest PnL results for 10 days (top left), 30 days (top right), 90 days (bottom left) and 180 days (bottom right) zero-liquidation loan markets.}\label{fig:backtest_pnl}
+\end{figure}
+
+\cref{fig:backtest_pnl} summarizes how the AMM's PnL would have performed under different market scenarios (again using using historical \verb|ETH/USD| price data for backtesting). The plots compare the AMM's RoI with the RoI of a simple buy\&hold strategy, where an investor, instead of investing $Q_K$ and $Q_S$ into a zero-liquidation loan AMM would have just held $Q_K$ and $Q_S$ during the same time frame. The four plots show backtest results for different time horizons, i.e., the top left is for a 10 days market, the top right for a 30 days, the bottom left for a 90 days and the bottom right for a 180 days market. One can see that the RoI of the AMM tends to outperform a simple buy\&hold strategy by up to 8\%. The relative outperformance tends to be higher for longer dated markets, e.g., up to 3.5\% for 10-day dated and up to 8\% for 180-day dated markets. Moreover, one can observe a positive correlation between the AMM's RoI and the relative outperformance. The AMM's RoI and relative outperformance tends to be highest when \verb|ETH/USD| prices are increasing and, as expected, lowest when prices are falling.
+
+\section{Closing Remarks}
+Zero-Liquidation loans make DeFi borrowing easier. They eliminate the need to monitor borrowing costs, LTVs, health factors etc., and thereby reduce administrative overhead for borrowers. At the same time, they also offer new yield opportunities for liquidity providers and lenders. In addition, they reduce the risk of financial contagion and avoid fire sales of collateral assets under stressed market conditions. Because zero-liquidation loans are settled without requiring on-chain price data from oracles, they are also more robust against flash crashes. While the herein presented AMM is used to facilitate zero-liquidation loans, its design can be generalized to other option-related payoffs as well. %Moreover, by introducing zero-liquidation loans to DeFi, borrowers can continue to leverage their crypto-holdings, while at the same time reducing the contagion risk that springs from otherwise liquidation-centered borrowing and lending protocol designs.
+
+\newpage
+\bibliographystyle{abbrv}
+\bibliography{bibliography}
+
+\end{document}
