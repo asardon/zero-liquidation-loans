@@ -1,7 +1,13 @@
 {
   "dependencies": {
-    "@chainlink/contracts": "^0.2.1",
     "@openzeppelin/contracts": "^3.3.0",
-    "abdk-libraries-solidity": "2.5"
+    "abdk-libraries-solidity": "2.5",
+    "erc-20-abi": "^1.0.0",
+    "web3": "^1.5.2"
+  },
+  "devDependencies": {
+    "@openzeppelin/test-helpers": "^0.5.13",
+    "chai": "^4.3.4",
+    "chai-bn": "^0.3.0"
   }
 }
