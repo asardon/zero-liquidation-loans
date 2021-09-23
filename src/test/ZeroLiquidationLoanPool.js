@@ -1,9 +1,9 @@
 const ZeroLiquidationLoanPool = artifacts.require("ZeroLiquidationLoanPool");
 const ForceSend = artifacts.require('ForceSend');
 const Web3 = require('web3');
-const { expect } = require('chai');
 const erc20ABI = require('erc-20-abi');
-const { BN, expectEvent, expectRevert, ether } = require('@openzeppelin/test-helpers');
+const { expect } = require('chai');
+const { BN, ether, expectEvent, expectRevert, time } = require('@openzeppelin/test-helpers');
 const chai = require('chai');
 chai.use(require('chai-bn')(BN));
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
@@ -11,6 +11,10 @@ const USDC_HOLDER_ADDRESS = "0x47ac0fb4f2d84898e4d9e7b4dab3c24507a6d503"; // che
 const WETH_HOLDER_ADDRESS = "0xf04a5cc80b1e94c69b48f5ee68a08cd2f09a7c3e"; // check with ganache unlock
 const deploymentConfig = require("../config/deploymentConfig.json");
 var init_block = 0;
+var borrow_ccy_token_addr = "";
+var borrow_ccy_token = "";
+var collateral_ccy_token = "";
+var collateral_ccy_token_addr = "";
 
 console.log("Make sure to run ganache with matching unlock addreses.")
 console.log("Tests expect the following addresses to be unlocked:")
@@ -22,6 +26,15 @@ contract("ZeroLiquidationLoanPool", accounts => {
   before(async () => {
     zeroLiquidationLoanPool = await ZeroLiquidationLoanPool.deployed();
     init_block = (await web3.eth.getBlock("latest")).number - 1;
+
+    borrow_ccy_token_addr = await zeroLiquidationLoanPool.borrow_ccy_token.
+      call();
+    borrow_ccy_token = new web3.eth.Contract(erc20ABI, borrow_ccy_token_addr);
+
+    collateral_ccy_token_addr = await zeroLiquidationLoanPool.
+      collateral_ccy_token.call();
+    collateral_ccy_token = new web3.eth.Contract(erc20ABI,
+                                                 collateral_ccy_token_addr);
   });
 
   it("should have initialized lp_end correctly", async () => {
@@ -50,10 +63,6 @@ contract("ZeroLiquidationLoanPool", accounts => {
   });
 
   it("should have initialized collateral ccy correctly", async () => {
-    let collateral_ccy_token_addr = await zeroLiquidationLoanPool.
-      collateral_ccy_token.call();
-    let collateral_ccy_token = new web3.eth.Contract(erc20ABI,
-                                                     collateral_ccy_token_addr);
     let collateral_ccy_token_symbol = await collateral_ccy_token.methods.
       symbol().call();
     let collateral_ccy_token_decimals = await collateral_ccy_token.methods.
@@ -70,10 +79,6 @@ contract("ZeroLiquidationLoanPool", accounts => {
   });
 
   it("should have initialized borrow ccy correctly", async () => {
-    let borrow_ccy_token_addr = await zeroLiquidationLoanPool.
-      borrow_ccy_token.call();
-    let borrow_ccy_token = new web3.eth.Contract(erc20ABI,
-                                                 borrow_ccy_token_addr);
     let borrow_ccy_token_symbol = await borrow_ccy_token.methods.
       symbol().call();
     let borrow_ccy_token_decimals = await borrow_ccy_token.methods.
@@ -90,11 +95,6 @@ contract("ZeroLiquidationLoanPool", accounts => {
 
   it("should be possible to access unlocked address to get some collateral ccy",
   async () => {
-    let collateral_ccy_token_addr = await zeroLiquidationLoanPool.
-      collateral_ccy_token.call();
-    let collateral_ccy_token = new web3.eth.Contract(erc20ABI,
-                                                     collateral_ccy_token_addr);
-
     // get previous WETH balances of test accounts
     let balance_acc1_prev = await collateral_ccy_token.methods.balanceOf(
      accounts[0]).call();
@@ -106,7 +106,7 @@ contract("ZeroLiquidationLoanPool", accounts => {
     await forceSend.go(WETH_HOLDER_ADDRESS, { value: ether('1') });
 
     // top up test accounts with WETH
-    let weth_amount = ether('250')
+    let weth_amount = ether('80')
     await collateral_ccy_token.methods.transfer(accounts[0], weth_amount).send({
       from: WETH_HOLDER_ADDRESS
     });
@@ -119,13 +119,8 @@ contract("ZeroLiquidationLoanPool", accounts => {
       weth_amount.toString());
   });
 
-  it("should be possible to access unlocked address to get some collateral ccy",
+  it("should be possible to access unlocked address to get some borrow ccy",
   async () => {
-    let borrow_ccy_token_addr = await zeroLiquidationLoanPool.
-      borrow_ccy_token.call();
-    let borrow_ccy_token = new web3.eth.Contract(erc20ABI,
-                                                 borrow_ccy_token_addr);
-
     // get previous WETH balances of test accounts
     let balance_acc1_prev = await borrow_ccy_token.methods.balanceOf(
      accounts[0]).call();
@@ -137,7 +132,7 @@ contract("ZeroLiquidationLoanPool", accounts => {
     await forceSend.go(USDC_HOLDER_ADDRESS, { value: ether('1') });
 
     // top up test accounts with USDC
-    let usdc_amount = 1000000000000 // 1 million
+    let usdc_amount = 80*2000*1000000 // 160'000 USD
     await borrow_ccy_token.methods.transfer(accounts[0], usdc_amount).send({
       from: USDC_HOLDER_ADDRESS
     });
@@ -181,7 +176,7 @@ contract("ZeroLiquidationLoanPool", accounts => {
     expect(is_lp_period_active).to.be.true;
     await expectRevert(
       zeroLiquidationLoanPool.initialize_amm(),
-      "Can initialize AMM only start after LP period");
+      "Can initialize AMM only after LP period");
   });
 
   it("should revert when calling borrow during lp_period",
@@ -230,7 +225,75 @@ contract("ZeroLiquidationLoanPool", accounts => {
   });
 
   it("should be fundable by liquidity providers during lp period", async () => {
+    let contract_addr = await zeroLiquidationLoanPool.address;
+    let borrow_ccy_to_collateral_ccy_ratio = await zeroLiquidationLoanPool.
+      borrow_ccy_to_collateral_ccy_ratio.call();
+    let decimals = await zeroLiquidationLoanPool.decimals.call();
 
+    let weth_amount = ether('80');
+    await collateral_ccy_token.methods.approve(contract_addr, weth_amount).send(
+      {from: accounts[0]});
+
+    let usdc_amount = weth_amount.mul(borrow_ccy_to_collateral_ccy_ratio).div(
+      decimals);
+    await borrow_ccy_token.methods.approve(contract_addr, usdc_amount).send(
+      {from: accounts[0]});
+
+    const receipt = await zeroLiquidationLoanPool.
+      provide_liquidity_and_receive_shares(weth_amount, usdc_amount,
+      { from: accounts[0]} );
+
+    let pool_shares = await zeroLiquidationLoanPool.pool_shares(accounts[0]);
+    let collateral_ccy_supply =  await zeroLiquidationLoanPool.
+      collateral_ccy_supply.call();
+    let borrow_ccy_supply =  await zeroLiquidationLoanPool.borrow_ccy_supply.
+      call();
+
+    expect(pool_shares.toString()).to.equal(usdc_amount.toString());
+    expect(collateral_ccy_supply.toString()).to.equal(weth_amount.toString());
+    expect(borrow_ccy_supply.toString()).to.equal(usdc_amount.toString());
+    expectEvent(receipt, 'LiquidityProvided', {
+      liquidity_provider: accounts[0],
+      block_number: receipt.receipt.blockNumber.toString(),
+      collateral_ccy_amount: weth_amount,
+      borrow_ccy_amount: usdc_amount,
+      shares: pool_shares,
+      total_shares: usdc_amount
+    });
   });
 
+  it("should be possible to initialize the AMM after the LP period",
+  async () => {
+    let lp_end = await zeroLiquidationLoanPool.lp_end.call();
+    await time.advanceBlockTo(lp_end);
+    await zeroLiquidationLoanPool.initialize_amm();
+
+    let amm_is_initialized = await zeroLiquidationLoanPool.amm_is_initialized.
+      call();
+    let amm_constant_act = await zeroLiquidationLoanPool.amm_constant.call();
+    let collateral_ccy_supply = await zeroLiquidationLoanPool.
+      collateral_ccy_supply.call();
+    let borrow_ccy_supply = await zeroLiquidationLoanPool.borrow_ccy_supply.
+      call();
+    let amm_constant_exp = collateral_ccy_supply.mul(borrow_ccy_supply);
+
+    expect(amm_is_initialized).to.be.true;
+    expect(amm_constant_act.toString()).to.equal(amm_constant_exp.toString());
+  });
+
+  it("must not be possible to fund the pool after the LP period", async () => {
+    let is_lp_period_active = await zeroLiquidationLoanPool.
+      is_lp_period_active.call();
+    let is_amm_period_active = await zeroLiquidationLoanPool.
+      is_amm_period_active.call();
+    let is_settlement_period_active = await zeroLiquidationLoanPool.
+      is_settlement_period_active.call();
+
+    expect(is_lp_period_active).to.be.false;
+    expect(is_amm_period_active).to.be.true;
+    expect(is_settlement_period_active).to.be.false;
+    await expectRevert(zeroLiquidationLoanPool.
+      provide_liquidity_and_receive_shares(1, 1, { from: accounts[0]}),
+      "LP period not active");
+  });
 });

@@ -19,9 +19,9 @@ console.log("decimals: " + deploymentConfig.decimals);
 module.exports = function (deployer) {
   deployer.deploy(
     ZeroLiquidationLoanPool,
-    deploymentConfig.lp_duration, // 57600 -> approx. 10 days from now
-    deploymentConfig.amm_duration, // 57600+172800 -> approx. 30 days after lp_end
-    deploymentConfig.settlement_duration, // 57600+172800+5760 -> approx. 1 day after amm_end
+    deploymentConfig.lp_duration, // set to 100 to be able to use time.advanceBlockTo //57600 -> approx. 10 days from now
+    deploymentConfig.amm_duration, // set to 100 to be able to use time.advanceBlockTo //57600+172800 -> approx. 30 days after lp_end
+    deploymentConfig.settlement_duration, // set to 100 to be able to use time.advanceBlockTo //57600+172800+5760 -> approx. 1 day after amm_end
     deploymentConfig.collateral_ccy, // "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2" -> WETH (mainnet)
     deploymentConfig.borrow_ccy, // "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48" -> USDC (mainnet)
     deploymentConfig.borrow_ccy_to_collateral_ccy_ratio, // borrow ccy units per collatral ccy units, here 2000=2000*decimals*10^6/10^18 USDC 10^6 vs WETH 10^18

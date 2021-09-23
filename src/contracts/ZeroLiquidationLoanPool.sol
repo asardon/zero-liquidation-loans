@@ -34,6 +34,14 @@ contract ZeroLiquidationLoanPool is Ownable {
     mapping(address => Loan[]) borrows;
     mapping(address => Loan[]) lends;
 
+    event LiquidityProvided(
+        address liquidity_provider,
+        uint256 block_number,
+        uint256 collateral_ccy_amount,
+        uint256 borrow_ccy_amount,
+        uint256 shares,
+        uint256 total_shares
+    );
     event NewLoan(
         bool user_is_borrower,
         address user,
@@ -135,7 +143,9 @@ contract ZeroLiquidationLoanPool is Ownable {
         public lpPeriodActive
     {
 
-        uint256 ratio = borrow_ccy_amount.div(collateral_ccy_amount);
+        uint256 ratio = borrow_ccy_amount.mul(decimals).div(
+            collateral_ccy_amount
+        );
         require(
             ratio == borrow_ccy_to_collateral_ccy_ratio,
             "Must provide ccys in proper ratio"
@@ -154,18 +164,27 @@ contract ZeroLiquidationLoanPool is Ownable {
         collateral_ccy_supply = collateral_ccy_supply.add(
             collateral_ccy_amount
         );
-        borrow_ccy_supply= borrow_ccy_supply.add(borrow_ccy_amount);
+        borrow_ccy_supply = borrow_ccy_supply.add(borrow_ccy_amount);
 
         total_pool_shares = total_pool_shares.add(borrow_ccy_amount);
         pool_shares[msg.sender] = pool_shares[msg.sender].add(
             borrow_ccy_amount
+        );
+
+        emit LiquidityProvided(
+            msg.sender,
+            block.number,
+            collateral_ccy_amount,
+            borrow_ccy_amount,
+            pool_shares[msg.sender],
+            total_pool_shares
         );
     }
 
     function initialize_amm() public {
         require(
             block.number > lp_end,
-            "Can initialize AMM only start after LP period"
+            "Can initialize AMM only after LP period"
         );
         require(block.number <= amm_end, "Must initialize amm before amm_end");
         amm_constant = collateral_ccy_supply.mul(borrow_ccy_supply);
