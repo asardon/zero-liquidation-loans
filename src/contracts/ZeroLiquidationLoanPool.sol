@@ -99,21 +99,33 @@ contract ZeroLiquidationLoanPool is Ownable {
     }
 
     modifier lpPeriodActive {
-        require(block.number <= lp_end);
+        require(is_lp_period_active(), "LP period not active");
         _;
     }
 
     modifier ammPeriodActive {
-        require(amm_is_initialized);
-        require(block.number > lp_end);
-        require(block.number <= amm_end);
+        require(is_amm_period_active(), "AMM period not active");
         _;
     }
 
     modifier settlementPeriodActive {
-        require(block.number > amm_end);
-        require(block.number <= settlement_end);
+        require(is_settlement_period_active(), "Settlement period not active");
         _;
+    }
+
+    function is_lp_period_active() public view returns (bool) {
+        return block.number <= lp_end;
+    }
+
+    function is_amm_period_active() public view returns (bool) {
+        return (
+            amm_is_initialized &&
+            block.number > lp_end &&
+            block.number <= amm_end);
+    }
+
+    function is_settlement_period_active() public view returns (bool) {
+        return block.number > amm_end && block.number <= settlement_end;
     }
 
     function provide_liquidity_and_receive_shares(
@@ -153,7 +165,7 @@ contract ZeroLiquidationLoanPool is Ownable {
     function initialize_amm() public {
         require(
             block.number > lp_end,
-            "Market can only start after liquidity provisioning"
+            "Can initialize AMM only start after LP period"
         );
         require(block.number <= amm_end, "Must initialize amm before amm_end");
         amm_constant = collateral_ccy_supply.mul(borrow_ccy_supply);

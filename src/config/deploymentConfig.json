@@ -1,0 +1,12 @@
+{
+  "lp_duration": 57600,
+  "amm_duration": 230400,
+  "settlement_duration": 236160,
+  "collateral_ccy": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+  "borrow_ccy": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+  "borrow_ccy_to_collateral_ccy_ratio": 2000,
+  "alpha": 200000000,
+  "init_collateral_price": 3000000000,
+  "init_collateral_price_vol": 1000000000000,
+  "decimals": 1000000000000
+}
