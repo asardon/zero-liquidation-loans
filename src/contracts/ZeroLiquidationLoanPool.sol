@@ -294,15 +294,37 @@ contract ZeroLiquidationLoanPool is Ownable {
     {
         uint256 _time_to_expiry = amm_end.sub(block.number).mul(decimals).div(
             amm_end.sub(lp_end));
-        uint256 _sqrt_time_to_expiry = uint256(ABDKMath64x64.sqrt(int128(
-            _time_to_expiry.mul(decimals)))
-        );
+        //uint256 _sqrt_time_to_expiry = uint256(ABDKMath64x64.sqrt(int128(
+        //    _time_to_expiry.mul(decimals)))
+        //);
+        uint256 _sqrt_time_to_expiry = sqrt(_time_to_expiry.mul(decimals));
         return (_time_to_expiry, _sqrt_time_to_expiry);
+    }
+
+    function sqrt(uint y) internal pure returns (uint z) {
+        if (y > 3) {
+            z = y;
+            uint x = y / 2 + 1;
+            while (x < z) {
+                z = x;
+                x = (y / x + x) / 2;
+            }
+        } else if (y != 0) {
+            z = 1;
+        }
     }
 
     function repay_loan_and_reclaim_collateral(uint loan_idx)
         public settlementPeriodActive
     {
+        require(
+            borrows[msg.sender].length > 0,
+            "Sender doesn`t have outstanding loans"
+        );
+        require(
+            loan_idx < borrows[msg.sender].length,
+            "loan_idx out of range"
+        );
         Loan storage loan = borrows[msg.sender][loan_idx];
         require(
             !(loan.is_repaid),
@@ -333,6 +355,14 @@ contract ZeroLiquidationLoanPool is Ownable {
     )
         public settlementPeriodActive onlyOwner
     {
+        require(
+            lends[lender].length > 0,
+            "Provided address didn`t lend to AMM"
+        );
+        require(
+            loan_idx < borrows[lender].length,
+            "loan_idx out of range"
+        );
         Loan storage loan = lends[lender][loan_idx];
         require(
             !(loan.is_repaid),
@@ -393,6 +423,10 @@ contract ZeroLiquidationLoanPool is Ownable {
     )
         public view returns (uint256)
     {
+        require(
+            collateral_ccy_received < collateral_ccy_supply,
+            "Collateral ccy to be paid out must be less than AMM`s inventory"
+        );
         uint256 loanable_amount = amm_constant.div(collateral_ccy_supply.sub(
             collateral_ccy_received)).sub(borrow_ccy_supply);
         return loanable_amount;
