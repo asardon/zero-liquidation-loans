@@ -13,7 +13,8 @@ console.log("borrow_ccy: " + deploymentConfig.borrow_ccy);
 console.log("borrow_ccy_to_collateral_ccy_ratio: " + deploymentConfig.borrow_ccy_to_collateral_ccy_ratio);
 console.log("alpha: " + deploymentConfig.alpha);
 console.log("init_collateral_price: " + deploymentConfig.init_collateral_price);
-console.log("init_collateral_price_vol: " + deploymentConfig.init_collateral_price_vol);
+console.log("init_collateral_price_annualized_vol: " + deploymentConfig.init_collateral_price_annualized_vol);
+console.log("blocks_per_year: " + deploymentConfig.blocks_per_year);
 console.log("decimals: " + deploymentConfig.decimals);
 
 module.exports = function (deployer) {
@@ -27,7 +28,8 @@ module.exports = function (deployer) {
     deploymentConfig.borrow_ccy_to_collateral_ccy_ratio, // borrow ccy units per collatral ccy units, here 2000=2000*decimals*10^6/10^18 USDC 10^6 vs WETH 10^18
     deploymentConfig.alpha, // 200000000 -> 0.2, i.e., 50% of ATM BS approx, hence 0.5*0.4 = 0.2
     deploymentConfig.init_collateral_price, // 3000*1000000 (scaled according to borrow cccy ERC20 decimals, USDC=10^6)
-    deploymentConfig.init_collateral_price_vol, // 1000000000000 (scaled according to zero-liquidation loan contract decimals)
+    deploymentConfig.init_collateral_price_annualized_vol, // 1000000000000 (scaled according to zero-liquidation loan contract decimals)
+    deploymentConfig.blocks_per_year, // 2372500
     deploymentConfig.decimals // 1000000000000 (10^12)
   );
 };

@@ -3,7 +3,6 @@ pragma solidity ^0.6.0;
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "abdk-libraries-solidity/ABDKMath64x64.sol";
 
 contract ZeroLiquidationLoanPool is Ownable {
 
@@ -17,7 +16,8 @@ contract ZeroLiquidationLoanPool is Ownable {
     uint256 public borrow_ccy_to_collateral_ccy_ratio;
     uint256 public alpha;
     uint256 public collateral_price;
-    uint256 public collateral_price_vol;
+    uint256 public collateral_price_annualized_vol;
+    uint256 public blocks_per_year;
     uint256 public decimals;
     uint256 public amm_constant;
     uint256 public total_pool_shares;
@@ -31,8 +31,8 @@ contract ZeroLiquidationLoanPool is Ownable {
         uint256 repayment_amount;
         bool is_repaid;
     }
-    mapping(address => Loan[]) borrows;
-    mapping(address => Loan[]) lends;
+    mapping(address => Loan[]) public borrows;
+    mapping(address => Loan[]) public lends;
 
     event LiquidityProvided(
         address liquidity_provider,
@@ -54,8 +54,10 @@ contract ZeroLiquidationLoanPool is Ownable {
         uint256 time_to_expiry
     );
     event UpdateObliviousPutPriceParams(
+        uint256 block_number,
         uint256 collateral_price,
-        uint256 collateral_price_vol
+        uint256 collateral_price_vol,
+        uint256 blocks_per_year
     );
     event LoanRepaid(
         address borrower,
@@ -75,7 +77,8 @@ contract ZeroLiquidationLoanPool is Ownable {
         uint256 _borrow_ccy_to_collateral_ccy_ratio,
         uint256 _alpha,
         uint256 _init_collateral_price,
-        uint256 _init_collateral_price_vol,
+        uint256 _init_collateral_price_annualized_vol,
+        uint256 _blocks_per_year,
         uint256 _decimals
     )
         public
@@ -89,9 +92,10 @@ contract ZeroLiquidationLoanPool is Ownable {
             "_init_collateral_price must be > 0"
         );
         require(
-            _init_collateral_price_vol > 0,
-            "_init_collateral_price_vol must be > 0"
+            _init_collateral_price_annualized_vol > 0,
+            "_init_collateral_price_annualized_vol must be > 0"
         );
+        require(_blocks_per_year > 0, "_blocks_per_year must be > 0");
         require(_decimals > 0, "_decimals must be > 0");
 
         lp_end = block.number.add(_lp_duration);
@@ -102,7 +106,8 @@ contract ZeroLiquidationLoanPool is Ownable {
         borrow_ccy_to_collateral_ccy_ratio = _borrow_ccy_to_collateral_ccy_ratio;
         alpha = _alpha;
         collateral_price = _init_collateral_price;
-        collateral_price_vol = _init_collateral_price_vol;
+        collateral_price_annualized_vol = _init_collateral_price_annualized_vol;
+        blocks_per_year = _blocks_per_year;
         decimals = _decimals;
     }
 
@@ -234,7 +239,7 @@ contract ZeroLiquidationLoanPool is Ownable {
             loan.upfront_received_amount,
             loan.repayment_amount,
             collateral_price,
-            collateral_price_vol,
+            collateral_price_annualized_vol,
             time_to_expiry
         );
     }
@@ -281,7 +286,7 @@ contract ZeroLiquidationLoanPool is Ownable {
             loan.upfront_received_amount,
             loan.repayment_amount,
             collateral_price,
-            collateral_price_vol,
+            collateral_price_annualized_vol,
             time_to_expiry
         );
     }
@@ -293,10 +298,7 @@ contract ZeroLiquidationLoanPool is Ownable {
         )
     {
         uint256 _time_to_expiry = amm_end.sub(block.number).mul(decimals).div(
-            amm_end.sub(lp_end));
-        //uint256 _sqrt_time_to_expiry = uint256(ABDKMath64x64.sqrt(int128(
-        //    _time_to_expiry.mul(decimals)))
-        //);
+            blocks_per_year);
         uint256 _sqrt_time_to_expiry = sqrt(_time_to_expiry.mul(decimals));
         return (_time_to_expiry, _sqrt_time_to_expiry);
     }
@@ -435,26 +437,33 @@ contract ZeroLiquidationLoanPool is Ownable {
     function get_oblivious_put_price(uint256 sqrt_time_to_expiry)
         public view returns (uint256)
     {
-        return alpha.mul(collateral_price).mul(collateral_price_vol).mul(
-            sqrt_time_to_expiry).div(decimals).mul(
-                borrow_ccy_token.decimals()).div(decimals).div(decimals);
+        return alpha.mul(collateral_price).mul(
+            collateral_price_annualized_vol).mul(sqrt_time_to_expiry).div(
+            decimals).div(decimals).div(decimals);
     }
 
-    function set_oblivious_put_price_params(
+    function update_oblivious_put_price_params(
         uint256 _collateral_price,
-        uint256 _collateral_price_vol
+        uint256 _collateral_price_annualized_vol,
+        uint256 _blocks_per_year
     )
         public onlyOwner
     {
-        require(collateral_price > 0, "New collateral price must be > 0");
-        require(collateral_price_vol > 0,
+        require(_collateral_price > 0, "New collateral price must be > 0");
+        require(_collateral_price_annualized_vol > 0,
                 "New collateral price vol must be > 0"
         );
+        require(_blocks_per_year > 0,
+                "New blocks per year must be > 0"
+        );
         collateral_price = _collateral_price;
-        collateral_price_vol = _collateral_price_vol;
+        collateral_price_annualized_vol = _collateral_price_annualized_vol;
+        blocks_per_year = _blocks_per_year;
         emit UpdateObliviousPutPriceParams(
+            block.number,
             collateral_price,
-            collateral_price_vol
+            collateral_price_annualized_vol,
+            blocks_per_year
         );
     }
 
