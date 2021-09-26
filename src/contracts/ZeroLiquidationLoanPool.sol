@@ -3,6 +3,7 @@ pragma solidity ^0.6.0;
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import './utils/Math.sol';
 
 contract ZeroLiquidationLoanPool is Ownable {
 
@@ -26,46 +27,44 @@ contract ZeroLiquidationLoanPool is Ownable {
     bool public amm_is_initialized;
     mapping(address => uint256) public pool_shares;
     struct Loan {
-        uint256 collateral_amount;
-        uint256 upfront_received_amount;
+        uint256 block_number;
+        uint256 received_amount;
         uint256 repayment_amount;
+        uint256 interest_amount;
+        uint256 pledged_amount;
         bool is_repaid;
     }
     mapping(address => Loan[]) public borrows;
     mapping(address => Loan[]) public lends;
 
-    event LiquidityProvided(
+    event ProvideLiquidity(
         address liquidity_provider,
-        uint256 block_number,
         uint256 collateral_ccy_amount,
         uint256 borrow_ccy_amount,
         uint256 shares,
         uint256 total_shares
     );
-    event NewLoan(
-        bool user_is_borrower,
-        address user,
-        uint256 block_number,
-        uint256 collateral_amount,
-        uint256 upfront_received_amount,
+    event IssueLoan(
+        address borrower,
+        address lender,
+        uint256 received_amount,
         uint256 repayment_amount,
+        uint256 interest_amount,
+        uint256 pledged_amount,
         uint256 collateral_price,
-        uint256 collateral_price_vol,
-        uint256 time_to_expiry
+        uint256 collateral_price_annualized_vol
     );
     event UpdateObliviousPutPriceParams(
-        uint256 block_number,
         uint256 collateral_price,
         uint256 collateral_price_vol,
         uint256 blocks_per_year
     );
-    event LoanRepaid(
+    event RepayLoan(
         address borrower,
         address lender,
         uint256 loan_idx,
-        uint256 block_number,
         uint256 repayment_amount,
-        uint256 collateral_amount
+        uint256 pledged_amount
     );
 
     constructor(
@@ -176,9 +175,8 @@ contract ZeroLiquidationLoanPool is Ownable {
             borrow_ccy_amount
         );
 
-        emit LiquidityProvided(
+        emit ProvideLiquidity(
             msg.sender,
-            block.number,
             collateral_ccy_amount,
             borrow_ccy_amount,
             pool_shares[msg.sender],
@@ -196,98 +194,102 @@ contract ZeroLiquidationLoanPool is Ownable {
         amm_is_initialized = true;
     }
 
-    function borrow(uint256 collateral_ccy_pledged) public ammPeriodActive {
-        uint256 repayment_amount = get_borrowable_amount(
-            collateral_ccy_pledged
-        );
+    function get_borrowing_terms(uint256 amount_to_be_pledged)
+        public view ammPeriodActive
+        returns (uint256, uint256, uint256){
+        uint256 repayment_amount = get_borrowable_amount(amount_to_be_pledged);
+        uint256 interest_amount = get_interest_cost();
+        uint256 receivable_amount = repayment_amount.sub(interest_amount);
+        return (receivable_amount, interest_amount, repayment_amount);
+    }
 
+    function get_lending_terms(uint256 amount_to_be_loaned)
+        public view ammPeriodActive
+        returns (uint256, uint256, uint256){
+        uint256 pledgeable_amount = get_pledgeable_amount(amount_to_be_loaned);
+        uint256 interest_amount = get_interest_cost();
+        uint256 repayment_amount = amount_to_be_loaned.add(interest_amount);
+        return (pledgeable_amount, interest_amount, repayment_amount);
+    }
+
+    function borrow(uint256 pledge_amount) public ammPeriodActive {
         (
-            uint256 time_to_expiry,
-            uint256 sqrt_time_to_expiry
-        ) = get_time_to_expiry();
-        uint256 oblivious_put_price = get_oblivious_put_price(
-            sqrt_time_to_expiry
-        );
-
-        uint256 upfront_received_amount = repayment_amount.sub(
-            oblivious_put_price
-        );
+            uint256 receive_amount,
+            uint256 interest_amount,
+            uint256 repayment_amount
+        ) = get_borrowing_terms(pledge_amount);
 
         collateral_ccy_token.transferFrom(
             msg.sender,
             address(this),
-            collateral_ccy_pledged
+            pledge_amount
         );
-        borrow_ccy_token.transfer(msg.sender, upfront_received_amount);
+        collateral_ccy_supply.add(pledge_amount);
 
-        collateral_ccy_supply.add(collateral_ccy_pledged);
-        borrow_ccy_supply.sub(upfront_received_amount);
+        borrow_ccy_token.transfer(msg.sender, receive_amount);
+        borrow_ccy_supply.sub(receive_amount);
+
         amm_constant = collateral_ccy_supply.mul(borrow_ccy_supply);
 
         Loan memory loan = Loan(
-            collateral_ccy_pledged,
-            upfront_received_amount,
+            block.number,
+            receive_amount,
             repayment_amount,
+            interest_amount,
+            pledge_amount,
             false
         );
         borrows[msg.sender].push(loan);
-        emit NewLoan(
-            true,
+
+        emit IssueLoan(
             msg.sender,
-            block.number,
-            loan.collateral_amount,
-            loan.upfront_received_amount,
-            loan.repayment_amount,
+            address(this),
+            receive_amount,
+            repayment_amount,
+            interest_amount,
+            pledge_amount,
             collateral_price,
-            collateral_price_annualized_vol,
-            time_to_expiry
+            collateral_price_annualized_vol
         );
     }
 
-    function lend(uint256 collateral_ccy_received) public ammPeriodActive {
-        uint256 upfront_received_amount = get_loanable_amount(
-            collateral_ccy_received
-        );
-
+    function lend(uint256 transfer_amount) public ammPeriodActive {
         (
-            uint256 time_to_expiry,
-            uint256 sqrt_time_to_expiry
-        ) = get_time_to_expiry();
-        uint256 oblivious_put_price = get_oblivious_put_price(
-            sqrt_time_to_expiry
-        );
-
-        uint256 repayment_amount = upfront_received_amount.add(
-            oblivious_put_price
-        );
+            uint256 pledge_amount,
+            uint256 interest_amount,
+            uint256 repayment_amount
+        ) = get_lending_terms(transfer_amount);
 
         borrow_ccy_token.transferFrom(
             msg.sender,
             address(this),
-            upfront_received_amount
+            transfer_amount
         );
+        borrow_ccy_supply.add(transfer_amount);
 
-        collateral_ccy_supply.sub(collateral_ccy_received);
-        borrow_ccy_supply.add(upfront_received_amount);
+        collateral_ccy_supply.sub(pledge_amount);
+
         amm_constant = collateral_ccy_supply.mul(borrow_ccy_supply);
 
         Loan memory loan = Loan(
-            collateral_ccy_received,
-            upfront_received_amount,
+            block.number,
+            transfer_amount,
             repayment_amount,
+            interest_amount,
+            pledge_amount,
             false
         );
         lends[msg.sender].push(loan);
-        emit NewLoan(
-            false,
+
+        emit IssueLoan(
+            address(this),
             msg.sender,
-            block.number,
-            loan.collateral_amount,
-            loan.upfront_received_amount,
-            loan.repayment_amount,
+            transfer_amount,
+            repayment_amount,
+            interest_amount,
+            pledge_amount,
             collateral_price,
-            collateral_price_annualized_vol,
-            time_to_expiry
+            collateral_price_annualized_vol
         );
     }
 
@@ -299,21 +301,9 @@ contract ZeroLiquidationLoanPool is Ownable {
     {
         uint256 _time_to_expiry = amm_end.sub(block.number).mul(decimals).div(
             blocks_per_year);
-        uint256 _sqrt_time_to_expiry = sqrt(_time_to_expiry.mul(decimals));
+        uint256 _sqrt_time_to_expiry = Math.sqrt(_time_to_expiry.mul(decimals)
+        );
         return (_time_to_expiry, _sqrt_time_to_expiry);
-    }
-
-    function sqrt(uint y) internal pure returns (uint z) {
-        if (y > 3) {
-            z = y;
-            uint x = y / 2 + 1;
-            while (x < z) {
-                z = x;
-                x = (y / x + x) / 2;
-            }
-        } else if (y != 0) {
-            z = 1;
-        }
     }
 
     function repay_loan_and_reclaim_collateral(uint loan_idx)
@@ -332,22 +322,25 @@ contract ZeroLiquidationLoanPool is Ownable {
             !(loan.is_repaid),
             "Must be a loan that has not been repaid yet"
         );
+
         borrow_ccy_token.transferFrom(
             msg.sender,
             address(this),
             loan.repayment_amount
         );
-        collateral_ccy_token.transfer(msg.sender, loan.collateral_amount);
         borrow_ccy_supply.add(loan.repayment_amount);
-        collateral_ccy_supply.sub(loan.collateral_amount);
+
+        collateral_ccy_token.transfer(msg.sender, loan.pledged_amount);
+        collateral_ccy_supply.sub(loan.pledged_amount);
+
         loan.is_repaid = true;
-        emit LoanRepaid(
+
+        emit RepayLoan(
             msg.sender,
             address(this),
             loan_idx,
-            block.number,
             loan.repayment_amount,
-            loan.collateral_amount
+            loan.pledged_amount
         );
     }
 
@@ -370,17 +363,20 @@ contract ZeroLiquidationLoanPool is Ownable {
             !(loan.is_repaid),
             "Must be a loan that has not been repaid yet"
         );
+
         borrow_ccy_token.transfer(msg.sender, loan.repayment_amount);
         borrow_ccy_supply.sub(loan.repayment_amount);
-        collateral_ccy_supply.add(loan.collateral_amount);
+
+        collateral_ccy_supply.add(loan.pledged_amount);
+
         loan.is_repaid = true;
-        emit LoanRepaid(
+
+        emit RepayLoan(
             address(this),
             msg.sender,
             loan_idx,
-            block.number,
             loan.repayment_amount,
-            loan.collateral_amount
+            loan.pledged_amount
         );
     }
 
@@ -411,27 +407,31 @@ contract ZeroLiquidationLoanPool is Ownable {
     }
 
     function get_borrowable_amount(
-        uint256 collateral_ccy_pledged
+        uint256 amount_to_be_pledged
     )
         public view returns (uint256)
     {
         uint256 borrowable_amount = borrow_ccy_supply.sub(amm_constant.div(
-            collateral_ccy_supply.add(collateral_ccy_pledged)));
+            collateral_ccy_supply.add(amount_to_be_pledged)));
         return borrowable_amount;
     }
 
-    function get_loanable_amount(
-        uint256 collateral_ccy_received
+    function get_pledgeable_amount(
+        uint256 amount_to_be_loaned
     )
         public view returns (uint256)
     {
-        require(
-            collateral_ccy_received < collateral_ccy_supply,
-            "Collateral ccy to be paid out must be less than AMM`s inventory"
+        uint256 pledgeable_amount = collateral_ccy_supply.sub(
+            amm_constant.div(borrow_ccy_supply.add(amount_to_be_loaned)));
+        return pledgeable_amount;
+    }
+
+    function get_interest_cost() public view returns (uint256) {
+        (,uint256 sqrt_time_to_expiry) = get_time_to_expiry();
+        uint256 oblivious_put_price = get_oblivious_put_price(
+            sqrt_time_to_expiry
         );
-        uint256 loanable_amount = amm_constant.div(collateral_ccy_supply.sub(
-            collateral_ccy_received)).sub(borrow_ccy_supply);
-        return loanable_amount;
+        return oblivious_put_price;
     }
 
     function get_oblivious_put_price(uint256 sqrt_time_to_expiry)
@@ -460,7 +460,6 @@ contract ZeroLiquidationLoanPool is Ownable {
         collateral_price_annualized_vol = _collateral_price_annualized_vol;
         blocks_per_year = _blocks_per_year;
         emit UpdateObliviousPutPriceParams(
-            block.number,
             collateral_price,
             collateral_price_annualized_vol,
             blocks_per_year

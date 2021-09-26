@@ -311,9 +311,8 @@ contract("ZeroLiquidationLoanPool", ([deployer, liquidity_provider_1,
       expect(borrow_ccy_supply.toString()).to.equal(usdc_amount.toString());
       expect(borrow_ccy_supply.toString()).to.equal(
         borrow_ccy_supply_act.toString());
-      expectEvent(receipt, 'LiquidityProvided', {
+      expectEvent(receipt, 'ProvideLiquidity', {
         liquidity_provider: liquidity_provider_1,
-        block_number: receipt.receipt.blockNumber.toString(),
         collateral_ccy_amount: weth_amount,
         borrow_ccy_amount: usdc_amount,
         shares: pool_shares,
@@ -359,9 +358,8 @@ contract("ZeroLiquidationLoanPool", ([deployer, liquidity_provider_1,
       expect(collateral_ccy_supply_diff.toString()).to.equal(
         weth_amount.toString());
       expect(borow_ccy_supply_diff.toString()).to.equal(usdc_amount.toString());
-      expectEvent(receipt, 'LiquidityProvided', {
+      expectEvent(receipt, 'ProvideLiquidity', {
         liquidity_provider: liquidity_provider_2,
-        block_number: receipt.receipt.blockNumber.toString(),
         collateral_ccy_amount: weth_amount,
         borrow_ccy_amount: usdc_amount,
         shares: pool_shares,
@@ -407,9 +405,8 @@ contract("ZeroLiquidationLoanPool", ([deployer, liquidity_provider_1,
         expect(collateral_ccy_supply_diff.toString()).to.equal(
           weth_amount.toString());
         expect(borow_ccy_supply_diff.toString()).to.equal(usdc_amount.toString());
-        expectEvent(receipt, 'LiquidityProvided', {
+        expectEvent(receipt, 'ProvideLiquidity', {
           liquidity_provider: liquidity_provider_3,
-          block_number: receipt.receipt.blockNumber.toString(),
           collateral_ccy_amount: weth_amount,
           borrow_ccy_amount: usdc_amount,
           shares: pool_shares,
@@ -493,7 +490,20 @@ contract("ZeroLiquidationLoanPool", ([deployer, liquidity_provider_1,
         { from: liquidity_provider_1}), "Settlement period not active");
     });
 
-    it("must calculate borrowable amounts correctyl", async () => {
+    it("must have correct AMM values (1/3)", async () => {
+      let collateral_ccy_supply = await zeroLiquidationLoanPool.
+        collateral_ccy_supply();
+      let borrow_ccy_supply = await zeroLiquidationLoanPool.borrow_ccy_supply();
+      let amm_constant = await zeroLiquidationLoanPool.amm_constant();
+
+      expect(collateral_ccy_supply.toString()).to.equal(
+        "149000000000000000000");
+      expect(borrow_ccy_supply.toString()).to.equal("298000000000");
+      expect(amm_constant.toString()).to.equal(
+        "44402000000000000000000000000000");
+    });
+
+    it("must calculate borrowable amounts correctly (2/3)", async () => {
       let borrowable_amount_for_10th_ETH = await zeroLiquidationLoanPool.
         get_borrowable_amount(ether('0.1'));
       let borrowable_amount_for_1_ETH = await zeroLiquidationLoanPool.
@@ -508,7 +518,7 @@ contract("ZeroLiquidationLoanPool", ([deployer, liquidity_provider_1,
         get_borrowable_amount(ether('100'));
 
       // d_Q_K = Q_K - k / (Q_S + d_Q_S)
-      // k = 298000000000*149000000000000000000
+      // k = 44402000000000000000000000000000
       // d_Q_K = 298000000000 - k / (149000000000000000000+d_Q_S*10^18)
       expect(borrowable_amount_for_10th_ETH.toString()).to.equal("199865862");
       expect(borrowable_amount_for_1_ETH.toString()).to.equal("1986666667");
@@ -518,29 +528,48 @@ contract("ZeroLiquidationLoanPool", ([deployer, liquidity_provider_1,
       expect(borrowable_amount_for_100_ETH.toString()).to.equal("119678714860");
     });
 
-    it("must calculate loanable amounts correctly", async () => {
-      let loanable_amount_for_10th_ETH = await zeroLiquidationLoanPool.
-        get_loanable_amount(ether('0.1'));
-      let loanable_amount_for_1_ETH = await zeroLiquidationLoanPool.
-        get_loanable_amount(ether('1'));
-      let loanable_amount_for_2_ETH = await zeroLiquidationLoanPool.
-        get_loanable_amount(ether('2'));
-      let loanable_amount_for_3_ETH = await zeroLiquidationLoanPool.
-        get_loanable_amount(ether('3'));
-      let loanable_amount_for_10_ETH = await zeroLiquidationLoanPool.
-        get_loanable_amount(ether('10'));
-      let loanable_amount_for_100_ETH = await zeroLiquidationLoanPool.
-        get_loanable_amount(ether('100'));
+    it("must calculate pledgeable amounts correctly (3/3)", async () => {
+      let pledgeable_amount_for_100_USDC = await zeroLiquidationLoanPool.
+        get_pledgeable_amount("100000000");
+      let pledgeable_amount_for_500_USDC = await zeroLiquidationLoanPool.
+        get_pledgeable_amount("500000000");
+      let pledgeable_amount_for_1000_USDC = await zeroLiquidationLoanPool.
+        get_pledgeable_amount("1000000000");
+      let pledgeable_amount_for_10000_USDC = await zeroLiquidationLoanPool.
+        get_pledgeable_amount("10000000000");
+      let pledgeable_amount_for_100000_USDC = await zeroLiquidationLoanPool.
+        get_pledgeable_amount("100000000000");
+      let pledgeable_amount_for_1000000_USDC = await zeroLiquidationLoanPool.
+        get_pledgeable_amount("1000000000000");
 
-      // d_Q_K = k / (Q_S - d_Q_S) - Q_K
-      // k = 298000000000*149000000000000000000
-      // d_Q_K = k / (149000000000000000000 - d_Q_S*10^18) - 298000000000
-      expect(loanable_amount_for_10th_ETH.toString()).to.equal("200134318");
-      expect(loanable_amount_for_1_ETH.toString()).to.equal("2013513513");
-      expect(loanable_amount_for_2_ETH.toString()).to.equal("4054421768");
-      expect(loanable_amount_for_3_ETH.toString()).to.equal("6123287671");
-      expect(loanable_amount_for_10_ETH.toString()).to.equal("21438848920");
-      expect(loanable_amount_for_100_ETH.toString()).to.equal("608163265306");
+      pledgeable_amount_for_100_USDC = web3.utils.fromWei(
+        pledgeable_amount_for_100_USDC, 'ether');
+      pledgeable_amount_for_500_USDC = web3.utils.fromWei(
+        pledgeable_amount_for_500_USDC, 'ether');
+      pledgeable_amount_for_1000_USDC = web3.utils.fromWei(
+        pledgeable_amount_for_1000_USDC, 'ether');
+      pledgeable_amount_for_10000_USDC = web3.utils.fromWei(
+        pledgeable_amount_for_10000_USDC, 'ether');
+      pledgeable_amount_for_100000_USDC = web3.utils.fromWei(
+        pledgeable_amount_for_100000_USDC, 'ether');
+      pledgeable_amount_for_1000000_USDC = web3.utils.fromWei(
+        pledgeable_amount_for_1000000_USDC, 'ether');
+
+      // d_Q_S = Q_S - k / (Q_K + d_Q_K)
+      // k = 44402000000000000000000000000000
+      // d_Q_S = 149000000000000000000 - k / (298000000000 + d_Q_K*10^6)
+      expect(pledgeable_amount_for_100_USDC.toString()).to.equal(
+        "0.049983227104998323");
+      expect(pledgeable_amount_for_500_USDC.toString()).to.equal(
+        "0.249581239530988275");
+      expect(pledgeable_amount_for_1000_USDC.toString()).to.equal(
+        "0.498327759197324415");
+      expect(pledgeable_amount_for_10000_USDC.toString()).to.equal(
+        "4.837662337662337663");
+      expect(pledgeable_amount_for_100000_USDC.toString()).to.equal(
+        "37.437185929648241207");
+      expect(pledgeable_amount_for_1000000_USDC.toString()).to.equal(
+        "114.791987673343605547");
     });
 
     it("must calculate time to expiry correctly (1/2)", async () => {
@@ -599,50 +628,68 @@ contract("ZeroLiquidationLoanPool", ([deployer, liquidity_provider_1,
     });
 
     it("can let users borrow during AMM period", async () => {
-      let usdc_amount_pre = await borrow_ccy_token.methods.balanceOf(borrower).
+      let usdc_balance_pre = await borrow_ccy_token.methods.balanceOf(borrower).
         call();
-      let weth_amount_pre = await collateral_ccy_token.methods.balanceOf(
+      let weth_balance_pre = await collateral_ccy_token.methods.balanceOf(
         borrower).call();
 
-      let weth_amount = ether('8');
-      await collateral_ccy_token.methods.approve(contract_addr, weth_amount).
+      let weth_pledged_amount = ether('8');
+      await collateral_ccy_token.methods.approve(contract_addr, weth_pledged_amount).
         send({from: borrower});
-      await zeroLiquidationLoanPool.borrow(weth_amount, {"from": borrower});
+      await zeroLiquidationLoanPool.borrow(weth_pledged_amount, {"from": borrower});
 
-      let usdc_amount_post = await borrow_ccy_token.methods.balanceOf(borrower).
+      let usdc_balance_post = await borrow_ccy_token.methods.balanceOf(borrower).
         call();
-      let weth_amount_post = await collateral_ccy_token.methods.balanceOf(
+      let weth_balance_post = await collateral_ccy_token.methods.balanceOf(
         borrower).call();
-      let weth_amount_diff = weth_amount_pre - weth_amount_post;
+
+      let usdc_balance_diff = usdc_balance_post - usdc_balance_pre;
+      let weth_balance_diff = weth_balance_pre - weth_balance_post;
+
       let loan = await zeroLiquidationLoanPool.borrows(borrower, 0);
 
-      expect(weth_amount_diff.toString()).to.equal(weth_amount.toString());
-      expect(loan.collateral_amount.toString()).to.equal(weth_amount.toString());
-      expect(usdc_amount_post).to.be.a.bignumber.that.is.above(usdc_amount_pre);
+      expect(loan.pledged_amount.toString()).to.equal(
+        weth_pledged_amount.toString());
+      expect(loan.pledged_amount.toString()).to.equal(
+        weth_balance_diff.toString());
+      expect(loan.received_amount.toString()).to.equal(
+        "15181538130");
+      expect(loan.repayment_amount.toString()).to.equal(
+        "15184713376");
+      expect(loan.interest_amount.toString()).to.equal(
+        "3175246");
     });
 
     it("can let users lend during AMM period", async () => {
-      let usdc_amount_pre = await borrow_ccy_token.methods.balanceOf(lender).
+      let usdc_balance_pre = await borrow_ccy_token.methods.balanceOf(lender).
         call();
-      let weth_amount_pre = await collateral_ccy_token.methods.balanceOf(
+      let weth_balance_pre = await collateral_ccy_token.methods.balanceOf(
         lender).call();
 
-      let usdc_amount = 1000000000000;
-      let weth_amount = ether('1');
-      await borrow_ccy_token.methods.approve(contract_addr, usdc_amount).
+      let usdc_lent_amount = "100000000000";
+      await borrow_ccy_token.methods.approve(contract_addr, usdc_lent_amount).
         send({from: lender});
-      await zeroLiquidationLoanPool.lend(weth_amount, {"from": lender});
+      await zeroLiquidationLoanPool.lend(usdc_lent_amount, {"from": lender});
 
-      let usdc_amount_post = await borrow_ccy_token.methods.balanceOf(lender).
+      let usdc_balance_post = await borrow_ccy_token.methods.balanceOf(lender).
         call();
-      let weth_amount_post = await collateral_ccy_token.methods.balanceOf(
+      let weth_balance_post = await collateral_ccy_token.methods.balanceOf(
         lender).call();
-      let usdc_amount_diff = usdc_amount_pre - usdc_amount_post;
+
+      let usdc_balance_diff = usdc_balance_pre - usdc_balance_post;
+
       let loan = await zeroLiquidationLoanPool.lends(lender, 0);
 
-      expect(loan.collateral_amount.toString()).to.equal(weth_amount.toString());
-      expect(loan.upfront_received_amount.toString()).to.equal(
-        usdc_amount_diff.toString());
+      expect(weth_balance_pre.toString()).to.equal(
+        weth_balance_post.toString());
+      expect(loan.pledged_amount.toString()).to.equal(
+        "37437185929648241207");
+      expect(loan.received_amount.toString()).to.equal(
+        usdc_lent_amount.toString());
+      expect(loan.repayment_amount.toString()).to.equal(
+        "100003140543");
+      expect(loan.interest_amount.toString()).to.equal(
+        "3140543");
     });
 
     it("must calculate time to expiry correctly (2/2)", async () => {
