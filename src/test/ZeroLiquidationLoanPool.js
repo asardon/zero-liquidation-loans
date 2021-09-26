@@ -271,9 +271,16 @@ contract("ZeroLiquidationLoanPool", ([deployer, liquidity_provider_1,
 
       expect(is_lp_period_active).to.be.true;
       await expectRevert(
-        zeroLiquidationLoanPool.amm_repay_loan_and_reclaim_collateral(ZERO_ADDRESS,
-          1),
+        zeroLiquidationLoanPool.amm_repay_loan_and_reclaim_collateral(
+          ZERO_ADDRESS, 1),
         "Settlement period not active");
+    });
+
+    it("must revert when trying to redeem shares during settlement period",
+    async () => {
+      await expectRevert(
+        zeroLiquidationLoanPool.redeem_shares(),
+        "Can redeem only after settlement_end");
     });
 
     it("must be fundable by liquidity providers during LP period", async () => {
@@ -282,8 +289,8 @@ contract("ZeroLiquidationLoanPool", ([deployer, liquidity_provider_1,
       let decimals = await zeroLiquidationLoanPool.decimals.call();
 
       let weth_amount = ether('80');
-      await collateral_ccy_token.methods.approve(contract_addr, weth_amount).send(
-        {from: liquidity_provider_1});
+      await collateral_ccy_token.methods.approve(contract_addr, weth_amount).
+        send({from: liquidity_provider_1});
 
       let usdc_amount = weth_amount.mul(borrow_ccy_to_collateral_ccy_ratio).div(
         decimals);
@@ -294,7 +301,8 @@ contract("ZeroLiquidationLoanPool", ([deployer, liquidity_provider_1,
         provide_liquidity_and_receive_shares(weth_amount, usdc_amount,
         { from: liquidity_provider_1} );
 
-      let pool_shares = await zeroLiquidationLoanPool.pool_shares(liquidity_provider_1);
+      let pool_shares = await zeroLiquidationLoanPool.pool_shares(
+        liquidity_provider_1);
       let collateral_ccy_supply =  await zeroLiquidationLoanPool.
         collateral_ccy_supply.call();
       let collateral_ccy_supply_act =  await collateral_ccy_token.methods.
@@ -320,14 +328,15 @@ contract("ZeroLiquidationLoanPool", ([deployer, liquidity_provider_1,
       });
     });
 
-    it("must be possible to have another liquidity provider (1/2)", async () => {
+    it("must be possible to have another liquidity provider (1/2)",
+    async () => {
       let borrow_ccy_to_collateral_ccy_ratio = await zeroLiquidationLoanPool.
         borrow_ccy_to_collateral_ccy_ratio.call();
       let decimals = await zeroLiquidationLoanPool.decimals.call();
 
       let weth_amount = ether('41');
-      await collateral_ccy_token.methods.approve(contract_addr, weth_amount).send(
-        {from: liquidity_provider_2});
+      await collateral_ccy_token.methods.approve(contract_addr, weth_amount).
+        send({from: liquidity_provider_2});
       let usdc_amount = weth_amount.mul(borrow_ccy_to_collateral_ccy_ratio).
         div(decimals);
       await borrow_ccy_token.methods.approve(contract_addr, usdc_amount).send(
@@ -342,7 +351,8 @@ contract("ZeroLiquidationLoanPool", ([deployer, liquidity_provider_1,
         provide_liquidity_and_receive_shares(weth_amount, usdc_amount,
         { from: liquidity_provider_2} );
 
-      let pool_shares = await zeroLiquidationLoanPool.pool_shares(liquidity_provider_2);
+      let pool_shares = await zeroLiquidationLoanPool.pool_shares(
+        liquidity_provider_2);
       let total_pool_shares = await zeroLiquidationLoanPool.total_pool_shares();
       let collateral_ccy_supply_post =  await zeroLiquidationLoanPool.
         collateral_ccy_supply.call();
@@ -367,14 +377,15 @@ contract("ZeroLiquidationLoanPool", ([deployer, liquidity_provider_1,
       });
     });
 
-    it("must be possible to have another liquidity provider (2/2)", async () => {
+    it("must be possible to have another liquidity provider (2/2)",
+    async () => {
       let borrow_ccy_to_collateral_ccy_ratio = await zeroLiquidationLoanPool.
         borrow_ccy_to_collateral_ccy_ratio.call();
       let decimals = await zeroLiquidationLoanPool.decimals.call();
 
       let weth_amount = ether('28');
-      await collateral_ccy_token.methods.approve(contract_addr, weth_amount).send(
-        {from: liquidity_provider_3});
+      await collateral_ccy_token.methods.approve(contract_addr, weth_amount).
+        send({from: liquidity_provider_3});
       let usdc_amount = weth_amount.mul(borrow_ccy_to_collateral_ccy_ratio).
         div(decimals);
       await borrow_ccy_token.methods.approve(contract_addr, usdc_amount).send(
@@ -389,8 +400,10 @@ contract("ZeroLiquidationLoanPool", ([deployer, liquidity_provider_1,
           provide_liquidity_and_receive_shares(weth_amount, usdc_amount,
           { from: liquidity_provider_3} );
 
-        let pool_shares = await zeroLiquidationLoanPool.pool_shares(liquidity_provider_3);
-        let total_pool_shares = await zeroLiquidationLoanPool.total_pool_shares();
+        let pool_shares = await zeroLiquidationLoanPool.pool_shares(
+          liquidity_provider_3);
+        let total_pool_shares = await zeroLiquidationLoanPool.
+          total_pool_shares();
         let collateral_ccy_supply_post =  await zeroLiquidationLoanPool.
           collateral_ccy_supply.call();
         let borrow_ccy_supply_post =  await zeroLiquidationLoanPool.
@@ -404,7 +417,8 @@ contract("ZeroLiquidationLoanPool", ([deployer, liquidity_provider_1,
         expect(pool_shares.toString()).to.equal(usdc_amount.toString());
         expect(collateral_ccy_supply_diff.toString()).to.equal(
           weth_amount.toString());
-        expect(borow_ccy_supply_diff.toString()).to.equal(usdc_amount.toString());
+        expect(borow_ccy_supply_diff.toString()).to.equal(
+          usdc_amount.toString());
         expectEvent(receipt, 'ProvideLiquidity', {
           liquidity_provider: liquidity_provider_3,
           collateral_ccy_amount: weth_amount,
@@ -420,8 +434,8 @@ contract("ZeroLiquidationLoanPool", ([deployer, liquidity_provider_1,
       let decimals = await zeroLiquidationLoanPool.decimals.call();
 
       let weth_amount = ether('1');
-      await collateral_ccy_token.methods.approve(contract_addr, weth_amount).send(
-        {from: liquidity_provider_3});
+      await collateral_ccy_token.methods.approve(contract_addr, weth_amount).
+        send({from: liquidity_provider_3});
       let usdc_amount = 1000000000;
       await borrow_ccy_token.methods.approve(contract_addr, usdc_amount).send(
         {from: liquidity_provider_3});
@@ -460,7 +474,8 @@ contract("ZeroLiquidationLoanPool", ([deployer, liquidity_provider_1,
       expect(amm_constant_act.toString()).to.equal(amm_constant_exp.toString());
     });
 
-    it("must not be possible to fund the pool after the LP period", async () => {
+    it("must not be possible to fund the pool after the LP period",
+    async () => {
       let is_lp_period_active = await zeroLiquidationLoanPool.
         is_lp_period_active.call();
       let is_amm_period_active = await zeroLiquidationLoanPool.
@@ -472,8 +487,8 @@ contract("ZeroLiquidationLoanPool", ([deployer, liquidity_provider_1,
       expect(is_amm_period_active).to.be.true;
       expect(is_settlement_period_active).to.be.false;
       await expectRevert(zeroLiquidationLoanPool.
-        provide_liquidity_and_receive_shares(1, 1, { from: liquidity_provider_1}),
-        "LP period not active");
+        provide_liquidity_and_receive_shares(1, 1,
+        {from: liquidity_provider_1}), "LP period not active");
     });
 
   });
@@ -488,6 +503,13 @@ contract("ZeroLiquidationLoanPool", ([deployer, liquidity_provider_1,
       await expectRevert(zeroLiquidationLoanPool.
         amm_repay_loan_and_reclaim_collateral(ZERO_ADDRESS, 0,
         { from: liquidity_provider_1}), "Settlement period not active");
+    });
+
+    it("must revert when trying to redeem shares during settlement period",
+    async () => {
+      await expectRevert(
+        zeroLiquidationLoanPool.redeem_shares(),
+        "Can redeem only after settlement_end");
     });
 
     it("must have correct AMM values (1/3)", async () => {
@@ -634,12 +656,13 @@ contract("ZeroLiquidationLoanPool", ([deployer, liquidity_provider_1,
         borrower).call();
 
       let weth_pledged_amount = ether('8');
-      await collateral_ccy_token.methods.approve(contract_addr, weth_pledged_amount).
-        send({from: borrower});
-      await zeroLiquidationLoanPool.borrow(weth_pledged_amount, {"from": borrower});
+      await collateral_ccy_token.methods.approve(contract_addr,
+        weth_pledged_amount).send({from: borrower});
+      await zeroLiquidationLoanPool.borrow(weth_pledged_amount,
+        {"from": borrower});
 
-      let usdc_balance_post = await borrow_ccy_token.methods.balanceOf(borrower).
-        call();
+      let usdc_balance_post = await borrow_ccy_token.methods.balanceOf(
+        borrower).call();
       let weth_balance_post = await collateral_ccy_token.methods.balanceOf(
         borrower).call();
 
@@ -653,11 +676,7 @@ contract("ZeroLiquidationLoanPool", ([deployer, liquidity_provider_1,
       expect(loan.pledged_amount.toString()).to.equal(
         weth_balance_diff.toString());
       expect(loan.received_amount.toString()).to.equal(
-        "15181538130");
-      expect(loan.repayment_amount.toString()).to.equal(
-        "15184713376");
-      expect(loan.interest_amount.toString()).to.equal(
-        "3175246");
+        usdc_balance_diff.toString());
     });
 
     it("can let users lend during AMM period", async () => {
@@ -682,14 +701,8 @@ contract("ZeroLiquidationLoanPool", ([deployer, liquidity_provider_1,
 
       expect(weth_balance_pre.toString()).to.equal(
         weth_balance_post.toString());
-      expect(loan.pledged_amount.toString()).to.equal(
-        "37437185929648241207");
       expect(loan.received_amount.toString()).to.equal(
         usdc_lent_amount.toString());
-      expect(loan.repayment_amount.toString()).to.equal(
-        "100003140543");
-      expect(loan.interest_amount.toString()).to.equal(
-        "3140543");
     });
 
     it("must calculate time to expiry correctly (2/2)", async () => {
@@ -702,11 +715,62 @@ contract("ZeroLiquidationLoanPool", ([deployer, liquidity_provider_1,
 
   describe('Settlement period unit tests', function () {
 
-    it("must let borrowers repay their loan during settlement period",
+    it("must revert when trying to redeem shares during settlement period",
     async () => {
+      await expectRevert(
+        zeroLiquidationLoanPool.redeem_shares(),
+        "Can redeem only after settlement_end");
     });
 
-    it("must not be possible to repay loan twice", async () => {
+    it("must revert when trying to repay loan as non-borrower", async () => {
+      await expectRevert(
+        zeroLiquidationLoanPool.repay_loan_and_reclaim_collateral(0,
+        {"from": lender}), "Sender doesn`t have outstanding loans");
+    });
+
+    it("must revert when trying to repay loan with out-of-range idx",
+    async () => {
+      await expectRevert(
+        zeroLiquidationLoanPool.repay_loan_and_reclaim_collateral(1,
+        {"from": borrower}), "loan_idx out of range");
+    });
+
+    it("must let borrowers repay their loan during settlement period",
+    async () => {
+      let usdc_balance_pre = await borrow_ccy_token.methods.balanceOf(borrower).
+        call();
+      let weth_balance_pre = await collateral_ccy_token.methods.balanceOf(
+        borrower).call();
+
+      let loan_pre = await zeroLiquidationLoanPool.borrows(borrower, 0);
+
+      await borrow_ccy_token.methods.approve(contract_addr,
+        loan_pre.repayment_amount.toString()).send({from: borrower});
+      await zeroLiquidationLoanPool.repay_loan_and_reclaim_collateral(0,
+        {"from": borrower});
+
+      let usdc_balance_post = await borrow_ccy_token.methods.balanceOf(
+        borrower).call();
+      let weth_balance_post = await collateral_ccy_token.methods.balanceOf(
+        borrower).call();
+
+      let usdc_balance_diff = usdc_balance_pre - usdc_balance_post;
+      let weth_balance_diff = weth_balance_post - weth_balance_pre;
+
+      let loan_post = await zeroLiquidationLoanPool.borrows(borrower, 0);
+
+      expect(loan_pre.is_repaid).to.be.false;
+      expect(loan_post.is_repaid).to.be.true;
+      expect(loan_post.repayment_amount.toString()).to.be.equal(
+        usdc_balance_diff.toString());
+      expect(loan_post.pledged_amount.toString()).to.be.equal(
+        weth_balance_diff.toString());
+    });
+
+    it("must revert when trying to repay loan twice", async () => {
+      await expectRevert(
+        zeroLiquidationLoanPool.repay_loan_and_reclaim_collateral(0,
+        {"from": borrower}), "Must be a loan that has not been repaid yet");
     });
 
     it("must let AMM repay its loan during settlement period", async () => {
@@ -715,6 +779,10 @@ contract("ZeroLiquidationLoanPool", ([deployer, liquidity_provider_1,
     it("must let liquidity providers redeem their shares after settlement period",
     async () => {
     });
+
+  });
+
+  describe('Post-settlement period unit tests', function () {
 
   });
 });
