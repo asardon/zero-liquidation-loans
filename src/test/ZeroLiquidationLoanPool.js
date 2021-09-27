@@ -135,8 +135,13 @@ contract("ZeroLiquidationLoanPool", ([deployer, liquidity_provider_1,
     async () => {
       // get previous WETH balances of test accounts
       let balance_acc1_prev = await collateral_ccy_token.methods.balanceOf(
-       liquidity_provider_1).call();
-
+        liquidity_provider_1).call();
+      let balance_acc2_prev = await collateral_ccy_token.methods.balanceOf(
+        liquidity_provider_2).call();
+      let balance_acc3_prev = await collateral_ccy_token.methods.balanceOf(
+        liquidity_provider_3).call();
+      let balance_borrower_prev = await collateral_ccy_token.methods.balanceOf(
+        borrower).call();
       // top-up WETH_HOLDER_ADDRESS with ETH to cover gast costs to pay transfers
       // use forceSend, otherwise will revert
       // taken from here: https://github.com/ryanio/truffle-mint-dai/blob/c4631cac37af17dbe80496a1aadb9872e203bc7d/test/sai.js
@@ -144,22 +149,40 @@ contract("ZeroLiquidationLoanPool", ([deployer, liquidity_provider_1,
       await forceSend.go(WETH_HOLDER_ADDRESS, { value: ether('1') });
 
       // top up test accounts with WETH
-      let weth_amount = ether('80')
+      let weth_amount_lp_1 = ether('80')
       await collateral_ccy_token.methods.transfer(liquidity_provider_1,
-        weth_amount).send({from: WETH_HOLDER_ADDRESS});
+        weth_amount_lp_1).send({from: WETH_HOLDER_ADDRESS});
+
+      let weth_amount_lp_2 = ether('41')
       await collateral_ccy_token.methods.transfer(liquidity_provider_2,
-        weth_amount).send({from: WETH_HOLDER_ADDRESS});
+        weth_amount_lp_2).send({from: WETH_HOLDER_ADDRESS});
+
+      let weth_amount_lp_3 = ether('28')
       await collateral_ccy_token.methods.transfer(liquidity_provider_3,
-        weth_amount).send({from: WETH_HOLDER_ADDRESS});
-      await collateral_ccy_token.methods.transfer(borrower, weth_amount).send(
-        {from: WETH_HOLDER_ADDRESS});
+        weth_amount_lp_3).send({from: WETH_HOLDER_ADDRESS});
+
+      let weth_amount_borrower = ether('80')
+      await collateral_ccy_token.methods.transfer(borrower,
+        weth_amount_borrower).send({from: WETH_HOLDER_ADDRESS});
 
       // get post WETH balances of test accounts
       let balance_acc1_post = await collateral_ccy_token.methods.balanceOf(
         liquidity_provider_1).call();
+      let balance_acc2_post = await collateral_ccy_token.methods.balanceOf(
+        liquidity_provider_2).call();
+      let balance_acc3_post = await collateral_ccy_token.methods.balanceOf(
+        liquidity_provider_3).call();
+      let balance_borrower_post = await collateral_ccy_token.methods.balanceOf(
+        borrower).call();
 
       expect((balance_acc1_post - balance_acc1_prev).toString()).to.equal(
-        weth_amount.toString());
+        weth_amount_lp_1.toString());
+      expect((balance_acc2_post - balance_acc2_prev).toString()).to.equal(
+        weth_amount_lp_2.toString());
+      expect((balance_acc3_post - balance_acc3_prev).toString()).to.equal(
+        weth_amount_lp_3.toString());
+      expect((balance_borrower_post - balance_borrower_prev).toString()).to.
+        equal(weth_amount_borrower.toString());
     });
 
     it("must be possible to access unlocked address to get some borrow ccy",
@@ -285,7 +308,8 @@ contract("ZeroLiquidationLoanPool", ([deployer, liquidity_provider_1,
         "Post-settlement period not active");
     });
 
-    it("must be fundable by liquidity providers during LP period", async () => {
+    it("must be fundable by liquidity providers during LP period (1/3)",
+    async () => {
       let borrow_ccy_to_collateral_ccy_ratio = await zeroLiquidationLoanPool.
         borrow_ccy_to_collateral_ccy_ratio.call();
       let decimals = await zeroLiquidationLoanPool.decimals.call();
@@ -299,7 +323,7 @@ contract("ZeroLiquidationLoanPool", ([deployer, liquidity_provider_1,
       await borrow_ccy_token.methods.approve(contract_addr, usdc_amount).send(
         {from: liquidity_provider_1});
 
-      const receipt = await zeroLiquidationLoanPool.
+      let receipt = await zeroLiquidationLoanPool.
         provide_liquidity_and_receive_shares(weth_amount, usdc_amount,
         { from: liquidity_provider_1} );
 
@@ -330,7 +354,7 @@ contract("ZeroLiquidationLoanPool", ([deployer, liquidity_provider_1,
       });
     });
 
-    it("must be possible to have another liquidity provider (1/2)",
+    it("must be fundable by liquidity providers during LP period (2/3)",
     async () => {
       let borrow_ccy_to_collateral_ccy_ratio = await zeroLiquidationLoanPool.
         borrow_ccy_to_collateral_ccy_ratio.call();
@@ -349,7 +373,7 @@ contract("ZeroLiquidationLoanPool", ([deployer, liquidity_provider_1,
       let borrow_ccy_supply_prev =  await zeroLiquidationLoanPool.
         borrow_ccy_supply.call();
 
-      const receipt = await zeroLiquidationLoanPool.
+      let receipt = await zeroLiquidationLoanPool.
         provide_liquidity_and_receive_shares(weth_amount, usdc_amount,
         { from: liquidity_provider_2} );
 
@@ -379,7 +403,7 @@ contract("ZeroLiquidationLoanPool", ([deployer, liquidity_provider_1,
       });
     });
 
-    it("must be possible to have another liquidity provider (2/2)",
+    it("must be fundable by liquidity providers during LP period (3/3)",
     async () => {
       let borrow_ccy_to_collateral_ccy_ratio = await zeroLiquidationLoanPool.
         borrow_ccy_to_collateral_ccy_ratio.call();
@@ -398,7 +422,7 @@ contract("ZeroLiquidationLoanPool", ([deployer, liquidity_provider_1,
         let borrow_ccy_supply_prev =  await zeroLiquidationLoanPool.
           borrow_ccy_supply.call();
 
-        const receipt = await zeroLiquidationLoanPool.
+        let receipt = await zeroLiquidationLoanPool.
           provide_liquidity_and_receive_shares(weth_amount, usdc_amount,
           { from: liquidity_provider_3} );
 
@@ -839,10 +863,17 @@ contract("ZeroLiquidationLoanPool", ([deployer, liquidity_provider_1,
         {"from": borrower}), "Must be an open loan");
     });
 
-    it("must revert if non-owner is trying to repay loan", async () => {
+    it("must revert if non-owner is trying to repay loan for AMM", async () => {
       await expectRevert(
         zeroLiquidationLoanPool.amm_repay_loan_and_reclaim_collateral(lender, 0,
         {"from": borrower}), "Ownable: caller is not the owner.");
+    });
+
+    it("must revert when trying to repay loan with out-of-range idx",
+    async () => {
+      await expectRevert(zeroLiquidationLoanPool.
+        amm_repay_loan_and_reclaim_collateral(lender, 1, {"from": deployer}),
+        "loan_idx out of range");
     });
 
     it("must let AMM repay its loan during settlement period", async () => {
@@ -893,13 +924,164 @@ contract("ZeroLiquidationLoanPool", ([deployer, liquidity_provider_1,
       expect(amm_weth_balance_diff.toString()).to.be.equal("0");
     });
 
-    it("must let liquidity providers redeem their shares after settlement period",
-    async () => {
+    it("must revert when AMM tries to repay loan twice", async () => {
+      await expectRevert(zeroLiquidationLoanPool.
+        amm_repay_loan_and_reclaim_collateral(lender, 0, {"from": deployer}),
+        "Must be an open loan");
     });
-
   });
 
   describe('Post-settlement period unit tests', function () {
+      before(async () => {
+        let settlement_end = await zeroLiquidationLoanPool.settlement_end.
+          call();
+        await time.advanceBlockTo(settlement_end);
 
+        let collateral_ccy_supply = await zeroLiquidationLoanPool.
+          collateral_ccy_supply();
+        let borrow_ccy_supply = await zeroLiquidationLoanPool.
+          borrow_ccy_supply();
+
+        let amm_usdc_balance = new BN(await borrow_ccy_token.methods.
+          balanceOf(contract_addr).call());
+        let amm_weth_balance = new BN(await collateral_ccy_token.methods.
+          balanceOf(contract_addr).call());
+
+        expect(borrow_ccy_supply.toString()).to.be.equal(
+          amm_usdc_balance.toString());
+        expect(collateral_ccy_supply.toString()).to.be.equal(
+          amm_weth_balance.toString());
+      });
+
+      it("must let liquidity providers redeem their shares in post-settlement period (1/3)",
+      async () => {
+        let lp_usdc_balance_pre = new BN(await borrow_ccy_token.methods.
+          balanceOf(liquidity_provider_1).call());
+        let lp_weth_balance_pre = new BN(await collateral_ccy_token.methods.
+          balanceOf(liquidity_provider_1).call());
+        let lp_shares_pre = new BN(await zeroLiquidationLoanPool.pool_shares(
+          liquidity_provider_1));
+
+        let amm_usdc_balance_pre = new BN(await borrow_ccy_token.methods.
+          balanceOf(contract_addr).call());
+        let amm_weth_balance_pre = new BN(await collateral_ccy_token.methods.
+          balanceOf(contract_addr).call());
+        let amm_usdc_balance_supply_pre = new BN(await zeroLiquidationLoanPool.
+          borrow_ccy_supply());
+        let amm_weth_balance_supply_pre = new BN(await zeroLiquidationLoanPool.
+          collateral_ccy_supply());
+
+        let receipt = await zeroLiquidationLoanPool.redeem_shares(
+          {"from": liquidity_provider_1});
+
+        let lp_usdc_balance_post = new BN(await borrow_ccy_token.methods.
+          balanceOf(liquidity_provider_1).call());
+        let lp_weth_balance_post = new BN(await collateral_ccy_token.methods.
+          balanceOf(liquidity_provider_1).call());
+        let lp_shares_post = new BN(await zeroLiquidationLoanPool.pool_shares(
+          liquidity_provider_1));
+
+        let amm_usdc_balance_post = new BN(await borrow_ccy_token.methods.
+          balanceOf(contract_addr).call());
+        let amm_weth_balance_post = new BN(await collateral_ccy_token.methods.
+          balanceOf(contract_addr).call());
+
+        expect(amm_usdc_balance_pre.toString()).to.equal("298000034895");
+        expect(amm_weth_balance_pre.toString()).to.equal("149000000000000000000");
+        expect(lp_usdc_balance_pre.toString()).to.equal("0");
+        expect(lp_weth_balance_pre.toString()).to.equal("0");
+        expect(lp_shares_pre.toString()).to.equal("160000000000");
+        expect(amm_usdc_balance_post.toString()).to.equal("138000016160");
+        expect(amm_weth_balance_post.toString()).to.equal("69000000000000000000");
+        expect(lp_usdc_balance_post.toString()).to.equal("160000018735");
+        expect(lp_weth_balance_post.toString()).to.equal("80000000000000000000");
+        expect(lp_shares_post.toString()).to.equal("0");
+      });
+
+      it("must let liquidity providers redeem their shares in post-settlement period (2/3)",
+      async () => {
+        let lp_usdc_balance_pre = new BN(await borrow_ccy_token.methods.
+          balanceOf(liquidity_provider_2).call());
+        let lp_weth_balance_pre = new BN(await collateral_ccy_token.methods.
+          balanceOf(liquidity_provider_2).call());
+        let lp_shares_pre = new BN(await zeroLiquidationLoanPool.pool_shares(
+          liquidity_provider_2));
+
+        let amm_usdc_balance_pre = new BN(await borrow_ccy_token.methods.
+          balanceOf(contract_addr).call());
+        let amm_weth_balance_pre = new BN(await collateral_ccy_token.methods.
+          balanceOf(contract_addr).call());
+
+        let receipt = await zeroLiquidationLoanPool.redeem_shares(
+          {"from": liquidity_provider_2});
+
+        let lp_usdc_balance_post = new BN(await borrow_ccy_token.methods.
+          balanceOf(liquidity_provider_2).call());
+        let lp_weth_balance_post = new BN(await collateral_ccy_token.methods.
+          balanceOf(liquidity_provider_2).call());
+        let lp_shares_post = new BN(await zeroLiquidationLoanPool.pool_shares(
+          liquidity_provider_2));
+
+        let amm_usdc_balance_post = new BN(await borrow_ccy_token.methods.
+          balanceOf(contract_addr).call());
+        let amm_weth_balance_post = new BN(await collateral_ccy_token.methods.
+          balanceOf(contract_addr).call());
+
+        expect(amm_usdc_balance_pre.toString()).to.equal("138000016160");
+        expect(amm_weth_balance_pre.toString()).to.equal("69000000000000000000");
+        expect(lp_usdc_balance_pre.toString()).to.equal("78000000000");
+        expect(lp_weth_balance_pre.toString()).to.equal("0");
+        expect(lp_shares_pre.toString()).to.equal("82000000000");
+        expect(amm_usdc_balance_post.toString()).to.equal("56000006559");
+        expect(amm_weth_balance_post.toString()).to.equal("28000000000000000000");
+        expect(lp_usdc_balance_post.toString()).to.equal("160000009601");
+        expect(lp_weth_balance_post.toString()).to.equal("41000000000000000000");
+        expect(lp_shares_post.toString()).to.equal("0");
+      });
+
+      it("must let liquidity providers redeem their shares in post-settlement period (3/3)",
+      async () => {
+        let lp_usdc_balance_pre = new BN(await borrow_ccy_token.methods.
+          balanceOf(liquidity_provider_3).call());
+        let lp_weth_balance_pre = new BN(await collateral_ccy_token.methods.
+          balanceOf(liquidity_provider_3).call());
+        let lp_shares_pre = new BN(await zeroLiquidationLoanPool.pool_shares(
+          liquidity_provider_3));
+
+        let amm_usdc_balance_pre = new BN(await borrow_ccy_token.methods.
+          balanceOf(contract_addr).call());
+        let amm_weth_balance_pre = new BN(await collateral_ccy_token.methods.
+          balanceOf(contract_addr).call());
+
+        let receipt = await zeroLiquidationLoanPool.redeem_shares(
+          {"from": liquidity_provider_3});
+
+        let lp_usdc_balance_post = new BN(await borrow_ccy_token.methods.
+          balanceOf(liquidity_provider_3).call());
+        let lp_weth_balance_post = new BN(await collateral_ccy_token.methods.
+          balanceOf(liquidity_provider_3).call());
+        let lp_shares_post = new BN(await zeroLiquidationLoanPool.pool_shares(
+          liquidity_provider_3));
+
+        let amm_usdc_balance_post = new BN(await borrow_ccy_token.methods.
+          balanceOf(contract_addr).call());
+        let amm_weth_balance_post = new BN(await collateral_ccy_token.methods.
+          balanceOf(contract_addr).call());
+
+        expect(amm_usdc_balance_pre.toString()).to.equal("56000006559");
+        expect(amm_weth_balance_pre.toString()).to.equal("28000000000000000000");
+        expect(lp_usdc_balance_pre.toString()).to.equal("104000000000");
+        expect(lp_weth_balance_pre.toString()).to.equal("0");
+        expect(lp_shares_pre.toString()).to.equal("56000000000");
+        expect(amm_usdc_balance_post.toString()).to.equal("2");
+        expect(amm_weth_balance_post.toString()).to.equal("0");
+        expect(lp_usdc_balance_post.toString()).to.equal("160000006557");
+        expect(lp_weth_balance_post.toString()).to.equal("28000000000000000000");
+        expect(lp_shares_post.toString()).to.equal("0");
+      });
+
+      it("must let lenders reclaim collateral",
+      async () => {
+      });
   });
 });

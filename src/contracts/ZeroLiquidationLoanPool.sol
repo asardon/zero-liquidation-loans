@@ -238,10 +238,10 @@ contract ZeroLiquidationLoanPool is Ownable {
             address(this),
             pledge_amount
         );
-        collateral_ccy_supply.add(pledge_amount);
+        collateral_ccy_supply = collateral_ccy_supply.add(pledge_amount);
 
         borrow_ccy_token.transfer(msg.sender, receive_amount);
-        borrow_ccy_supply.sub(receive_amount);
+        borrow_ccy_supply = borrow_ccy_supply.sub(receive_amount);
 
         amm_constant = collateral_ccy_supply.mul(borrow_ccy_supply);
 
@@ -279,9 +279,9 @@ contract ZeroLiquidationLoanPool is Ownable {
             address(this),
             transfer_amount
         );
-        borrow_ccy_supply.add(transfer_amount);
+        borrow_ccy_supply = borrow_ccy_supply.add(transfer_amount);
 
-        collateral_ccy_supply.sub(pledge_amount);
+        collateral_ccy_supply = collateral_ccy_supply.sub(pledge_amount);
 
         amm_constant = collateral_ccy_supply.mul(borrow_ccy_supply);
 
@@ -342,10 +342,10 @@ contract ZeroLiquidationLoanPool is Ownable {
             address(this),
             loan.repayment_amount
         );
-        borrow_ccy_supply.add(loan.repayment_amount);
+        borrow_ccy_supply = borrow_ccy_supply.add(loan.repayment_amount);
 
         collateral_ccy_token.transfer(msg.sender, loan.pledged_amount);
-        collateral_ccy_supply.sub(loan.pledged_amount);
+        collateral_ccy_supply = collateral_ccy_supply.sub(loan.pledged_amount);
 
         loan.state = LoanState.REPAID;
 
@@ -380,9 +380,9 @@ contract ZeroLiquidationLoanPool is Ownable {
         );
 
         borrow_ccy_token.transfer(lender, loan.repayment_amount);
-        borrow_ccy_supply.sub(loan.repayment_amount);
+        borrow_ccy_supply = borrow_ccy_supply.sub(loan.repayment_amount);
 
-        collateral_ccy_supply.add(loan.pledged_amount);
+        collateral_ccy_supply = collateral_ccy_supply.add(loan.pledged_amount);
 
         loan.state = LoanState.REPAID;
 
