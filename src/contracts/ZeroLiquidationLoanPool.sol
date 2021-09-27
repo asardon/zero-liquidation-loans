@@ -9,6 +9,7 @@ contract ZeroLiquidationLoanPool is Ownable {
 
     using SafeMath for uint256;
 
+    enum LoanState { OPEN, REPAID, RECLAIMED }
     uint256 public lp_end;
     uint256 public amm_end;
     uint256 public settlement_end;
@@ -32,7 +33,7 @@ contract ZeroLiquidationLoanPool is Ownable {
         uint256 repayment_amount;
         uint256 interest_amount;
         uint256 pledged_amount;
-        bool is_repaid;
+        LoanState state;
     }
     mapping(address => Loan[]) public borrows;
     mapping(address => Loan[]) public lends;
@@ -44,7 +45,7 @@ contract ZeroLiquidationLoanPool is Ownable {
         uint256 shares,
         uint256 total_shares
     );
-    event IssueLoan(
+    event OpenLoan(
         address borrower,
         address lender,
         uint256 received_amount,
@@ -59,12 +60,13 @@ contract ZeroLiquidationLoanPool is Ownable {
         uint256 collateral_price_vol,
         uint256 blocks_per_year
     );
-    event RepayLoan(
+    event CloseLoan(
         address borrower,
         address lender,
         uint256 loan_idx,
         uint256 repayment_amount,
-        uint256 pledged_amount
+        uint256 pledged_amount,
+        LoanState state
     );
 
     constructor(
@@ -125,6 +127,14 @@ contract ZeroLiquidationLoanPool is Ownable {
         _;
     }
 
+    modifier postSettlementPeriodActive {
+        require(
+            is_post_settlement_period_active(),
+            "Post-settlement period not active"
+        );
+        _;
+    }
+
     function is_lp_period_active() public view returns (bool) {
         return block.number <= lp_end;
     }
@@ -138,6 +148,10 @@ contract ZeroLiquidationLoanPool is Ownable {
 
     function is_settlement_period_active() public view returns (bool) {
         return block.number > amm_end && block.number <= settlement_end;
+    }
+
+    function is_post_settlement_period_active() public view returns (bool) {
+        return block.number > settlement_end;
     }
 
     function provide_liquidity_and_receive_shares(
@@ -237,11 +251,11 @@ contract ZeroLiquidationLoanPool is Ownable {
             repayment_amount,
             interest_amount,
             pledge_amount,
-            false
+            LoanState.OPEN
         );
         borrows[msg.sender].push(loan);
 
-        emit IssueLoan(
+        emit OpenLoan(
             msg.sender,
             address(this),
             receive_amount,
@@ -277,11 +291,11 @@ contract ZeroLiquidationLoanPool is Ownable {
             repayment_amount,
             interest_amount,
             pledge_amount,
-            false
+            LoanState.OPEN
         );
         lends[msg.sender].push(loan);
 
-        emit IssueLoan(
+        emit OpenLoan(
             address(this),
             msg.sender,
             transfer_amount,
@@ -319,8 +333,8 @@ contract ZeroLiquidationLoanPool is Ownable {
         );
         Loan storage loan = borrows[msg.sender][loan_idx];
         require(
-            !(loan.is_repaid),
-            "Must be a loan that has not been repaid yet"
+            loan.state == LoanState.OPEN,
+            "Must be an open loan"
         );
 
         borrow_ccy_token.transferFrom(
@@ -333,14 +347,15 @@ contract ZeroLiquidationLoanPool is Ownable {
         collateral_ccy_token.transfer(msg.sender, loan.pledged_amount);
         collateral_ccy_supply.sub(loan.pledged_amount);
 
-        loan.is_repaid = true;
+        loan.state = LoanState.REPAID;
 
-        emit RepayLoan(
+        emit CloseLoan(
             msg.sender,
             address(this),
             loan_idx,
             loan.repayment_amount,
-            loan.pledged_amount
+            loan.pledged_amount,
+            LoanState.REPAID
         );
     }
 
@@ -355,36 +370,58 @@ contract ZeroLiquidationLoanPool is Ownable {
             "Provided address didn`t lend to AMM"
         );
         require(
-            loan_idx < borrows[lender].length,
+            loan_idx < lends[lender].length,
             "loan_idx out of range"
         );
         Loan storage loan = lends[lender][loan_idx];
         require(
-            !(loan.is_repaid),
-            "Must be a loan that has not been repaid yet"
+            loan.state == LoanState.OPEN,
+            "Must be an open loan"
         );
 
-        borrow_ccy_token.transfer(msg.sender, loan.repayment_amount);
+        borrow_ccy_token.transfer(lender, loan.repayment_amount);
         borrow_ccy_supply.sub(loan.repayment_amount);
 
         collateral_ccy_supply.add(loan.pledged_amount);
 
-        loan.is_repaid = true;
+        loan.state = LoanState.REPAID;
 
-        emit RepayLoan(
+        emit CloseLoan(
             address(this),
             msg.sender,
             loan_idx,
             loan.repayment_amount,
-            loan.pledged_amount
+            loan.pledged_amount,
+            LoanState.REPAID
         );
     }
 
-    function redeem_shares() public {
+    function reclaim_collateral(uint loan_idx)
+    public postSettlementPeriodActive {
         require(
-            block.number > settlement_end,
-            "Can redeem only after settlement_end"
+            loan_idx < lends[msg.sender].length,
+            "loan_idx out of range"
         );
+        Loan storage loan = lends[msg.sender][loan_idx];
+        require(
+            loan.state == LoanState.OPEN,
+            "Must be an open loan"
+        );
+
+        collateral_ccy_token.transfer(msg.sender, loan.pledged_amount);
+        loan.state = LoanState.RECLAIMED;
+
+        emit CloseLoan(
+            address(this),
+            msg.sender,
+            loan_idx,
+            loan.repayment_amount,
+            loan.pledged_amount,
+            LoanState.RECLAIMED
+        );
+    }
+
+    function redeem_shares() public postSettlementPeriodActive {
         require(pool_shares[msg.sender] > 0, "User must hold > 0 shares");
         uint256 pro_rata_collateral_ccy_share = collateral_ccy_supply.mul(
             pool_shares[msg.sender]).mul(decimals).div(total_pool_shares).div(
