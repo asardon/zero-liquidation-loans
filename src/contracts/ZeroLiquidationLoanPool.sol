@@ -10,6 +10,8 @@ contract ZeroLiquidationLoanPool is Ownable {
     using SafeMath for uint256;
 
     enum LoanState { OPEN, REPAID, RECLAIMED }
+    enum PoolState { UNDEFINED, LP, PENDING_INITIALIZATION, AMM, SETTLEMENT, POST_SETTLMENT }
+
     uint256 public lp_end;
     uint256 public amm_end;
     uint256 public settlement_end;
@@ -122,6 +124,11 @@ contract ZeroLiquidationLoanPool is Ownable {
         _;
     }
 
+    modifier pendingInitialization {
+        require(is_pending_initialization(), "AMM initialization pending");
+        _;
+    }
+
     modifier settlementPeriodActive {
         require(is_settlement_period_active(), "Settlement period not active");
         _;
@@ -135,8 +142,31 @@ contract ZeroLiquidationLoanPool is Ownable {
         _;
     }
 
+    function get_state() public view returns (PoolState) {
+        PoolState state = PoolState.UNDEFINED;
+        if(is_lp_period_active()) {
+            state = PoolState.LP;
+        } else if(is_pending_initialization()) {
+            state = PoolState.PENDING_INITIALIZATION;
+        } else if(is_amm_period_active()) {
+            state = PoolState.AMM;
+        } else if(is_settlement_period_active()) {
+            state = PoolState.SETTLEMENT;
+        } else if(is_post_settlement_period_active()) {
+            state = PoolState.POST_SETTLMENT;
+        }
+        return state;
+    }
+
     function is_lp_period_active() public view returns (bool) {
         return block.number <= lp_end;
+    }
+
+    function is_pending_initialization() public view returns (bool) {
+        return (
+            !amm_is_initialized &&
+            block.number > lp_end &&
+            block.number <= amm_end);
     }
 
     function is_amm_period_active() public view returns (bool) {
@@ -198,12 +228,7 @@ contract ZeroLiquidationLoanPool is Ownable {
         );
     }
 
-    function initialize_amm() public {
-        require(
-            block.number > lp_end,
-            "Can initialize AMM only after LP period"
-        );
-        require(block.number <= amm_end, "Must initialize amm before amm_end");
+    function initialize_amm() public pendingInitialization {
         amm_constant = collateral_ccy_supply.mul(borrow_ccy_supply);
         amm_is_initialized = true;
     }

@@ -253,7 +253,7 @@ contract("ZeroLiquidationLoanPool", ([deployer, liquidity_provider_1,
       expect(is_lp_period_active).to.be.true;
       await expectRevert(
         zeroLiquidationLoanPool.initialize_amm(),
-        "Can initialize AMM only after LP period");
+        "AMM initialization pending");
     });
 
     it("must revert when calling borrow during lp_period",

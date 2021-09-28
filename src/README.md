@@ -2,10 +2,17 @@
 Make sure to use the following packages.
 ```
 npm -i @openzeppelin/contracts@3.3.0
-npm -i @chainlink/contracts --save
-npm i abdk-libraries-solidity
 ```
 Note that `pragma solidity ^0.6.0;` is required.
+
+# Setup HD Wallet
+Use `npx mnemonics` to generate mnemonic. Then open `truffle console` and run
+```
+const HDWalletProvider = require('@truffle/hdwallet-provider');
+const mnemonic = '...';
+const wallet = new HDWalletProvider(mnemonic, "http://localhost:8545");
+```
+and retrieve private key to be imported to metamask via `wallet.wallets[...].privateKey.toString("hex")`.
 
 # Running Tests
 
