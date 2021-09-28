@@ -212,27 +212,33 @@ contract ZeroLiquidationLoanPool is Ownable {
         public view ammPeriodActive
         returns (uint256, uint256, uint256){
         uint256 repayment_amount = get_borrowable_amount(amount_to_be_pledged);
-        uint256 interest_amount = get_interest_cost();
-        uint256 receivable_amount = repayment_amount.sub(interest_amount);
-        return (receivable_amount, interest_amount, repayment_amount);
+        uint256 interest_amount = get_interest_cost(amount_to_be_pledged);
+        uint256 borrow_ccy_out_amount = repayment_amount.sub(interest_amount);
+        return (borrow_ccy_out_amount, interest_amount, repayment_amount);
     }
 
-    function get_lending_terms(uint256 amount_to_be_loaned)
+    function get_lending_terms(uint256 amount_to_be_repaid)
         public view ammPeriodActive
         returns (uint256, uint256, uint256){
-        uint256 pledgeable_amount = get_pledgeable_amount(amount_to_be_loaned);
-        uint256 interest_amount = get_interest_cost();
-        uint256 repayment_amount = amount_to_be_loaned.add(interest_amount);
-        return (pledgeable_amount, interest_amount, repayment_amount);
+        uint256 pledgeable_amount = get_pledgeable_amount(amount_to_be_repaid);
+        uint256 interest_amount = get_interest_cost(pledgeable_amount);
+        uint256 borrow_ccy_in_amount = amount_to_be_repaid.sub(
+            interest_amount);
+        return (borrow_ccy_in_amount, pledgeable_amount, interest_amount);
     }
 
-    function borrow(uint256 pledge_amount) public ammPeriodActive {
+    function borrow(uint256 min_borrow_ccy_out_amount, uint256 pledge_amount)
+    public ammPeriodActive
+    {
         (
-            uint256 receive_amount,
+            uint256 borrow_ccy_out_amount,
             uint256 interest_amount,
             uint256 repayment_amount
         ) = get_borrowing_terms(pledge_amount);
-
+        require(
+            borrow_ccy_out_amount >= min_borrow_ccy_out_amount,
+            "borrow_ccy_out_amount must be at least min_borrow_ccy_out_amount"
+        );
         collateral_ccy_token.transferFrom(
             msg.sender,
             address(this),
@@ -240,14 +246,14 @@ contract ZeroLiquidationLoanPool is Ownable {
         );
         collateral_ccy_supply = collateral_ccy_supply.add(pledge_amount);
 
-        borrow_ccy_token.transfer(msg.sender, receive_amount);
-        borrow_ccy_supply = borrow_ccy_supply.sub(receive_amount);
+        borrow_ccy_token.transfer(msg.sender, borrow_ccy_out_amount);
+        borrow_ccy_supply = borrow_ccy_supply.sub(borrow_ccy_out_amount);
 
         amm_constant = collateral_ccy_supply.mul(borrow_ccy_supply);
 
         Loan memory loan = Loan(
             block.number,
-            receive_amount,
+            borrow_ccy_out_amount,
             repayment_amount,
             interest_amount,
             pledge_amount,
@@ -258,7 +264,7 @@ contract ZeroLiquidationLoanPool is Ownable {
         emit OpenLoan(
             msg.sender,
             address(this),
-            receive_amount,
+            borrow_ccy_out_amount,
             repayment_amount,
             interest_amount,
             pledge_amount,
@@ -267,19 +273,24 @@ contract ZeroLiquidationLoanPool is Ownable {
         );
     }
 
-    function lend(uint256 transfer_amount) public ammPeriodActive {
+    function lend(uint256 max_borow_ccy_in_amount, uint256 repayment_amount)
+    public ammPeriodActive
+    {
         (
+            uint256 borow_ccy_in_amount,
             uint256 pledge_amount,
-            uint256 interest_amount,
-            uint256 repayment_amount
-        ) = get_lending_terms(transfer_amount);
-
+            uint256 interest_amount
+        ) = get_lending_terms(repayment_amount);
+        require(
+            borow_ccy_in_amount <= max_borow_ccy_in_amount,
+            "borow_ccy_in_amount must not exceed max_borow_ccy_in_amount"
+        );
         borrow_ccy_token.transferFrom(
             msg.sender,
             address(this),
-            transfer_amount
+            borow_ccy_in_amount
         );
-        borrow_ccy_supply = borrow_ccy_supply.add(transfer_amount);
+        borrow_ccy_supply = borrow_ccy_supply.add(borow_ccy_in_amount);
 
         collateral_ccy_supply = collateral_ccy_supply.sub(pledge_amount);
 
@@ -287,7 +298,7 @@ contract ZeroLiquidationLoanPool is Ownable {
 
         Loan memory loan = Loan(
             block.number,
-            transfer_amount,
+            borow_ccy_in_amount,
             repayment_amount,
             interest_amount,
             pledge_amount,
@@ -298,7 +309,7 @@ contract ZeroLiquidationLoanPool is Ownable {
         emit OpenLoan(
             address(this),
             msg.sender,
-            transfer_amount,
+            borow_ccy_in_amount,
             repayment_amount,
             interest_amount,
             pledge_amount,
@@ -463,12 +474,17 @@ contract ZeroLiquidationLoanPool is Ownable {
         return pledgeable_amount;
     }
 
-    function get_interest_cost() public view returns (uint256) {
+    function get_interest_cost(uint256 pledged_amount)
+    public view returns (uint256)
+    {
         (,uint256 sqrt_time_to_expiry) = get_time_to_expiry();
         uint256 oblivious_put_price = get_oblivious_put_price(
             sqrt_time_to_expiry
         );
-        return oblivious_put_price;
+        uint256 collateral_ccy_decimals = collateral_ccy_token.decimals();
+        uint256 interest_cost = oblivious_put_price.mul(pledged_amount).div(
+            10**collateral_ccy_decimals);
+        return interest_cost;
     }
 
     function get_oblivious_put_price(uint256 sqrt_time_to_expiry)

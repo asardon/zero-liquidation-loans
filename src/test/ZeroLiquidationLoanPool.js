@@ -263,7 +263,7 @@ contract("ZeroLiquidationLoanPool", ([deployer, liquidity_provider_1,
 
       expect(is_lp_period_active).to.be.true;
       await expectRevert(
-        zeroLiquidationLoanPool.borrow(1),
+        zeroLiquidationLoanPool.borrow(1, 1),
         "AMM period not active");
     });
 
@@ -274,7 +274,7 @@ contract("ZeroLiquidationLoanPool", ([deployer, liquidity_provider_1,
 
       expect(is_lp_period_active).to.be.true;
       await expectRevert(
-        zeroLiquidationLoanPool.lend(1),
+        zeroLiquidationLoanPool.lend(1, 1),
         "AMM period not active");
     });
 
@@ -687,10 +687,17 @@ contract("ZeroLiquidationLoanPool", ([deployer, liquidity_provider_1,
         balanceOf(contract_addr).call());
 
       let weth_pledged_amount = ether('8');
+      let borrowing_terms = await zeroLiquidationLoanPool.get_borrowing_terms(
+        weth_pledged_amount);
+
+      // allow 10bps diff in lendable amount, due to change in time to expiry
+      let min_USDC_borrow_amount = (new BN(borrowing_terms["0"])).mul(
+        new BN("99900")).div(new BN("100000"));
+
       await collateral_ccy_token.methods.approve(contract_addr,
         weth_pledged_amount).send({from: borrower});
-      await zeroLiquidationLoanPool.borrow(weth_pledged_amount,
-        {"from": borrower});
+      await zeroLiquidationLoanPool.borrow(min_USDC_borrow_amount,
+        weth_pledged_amount, {"from": borrower});
 
       let borrower_usdc_balance_post = new BN(await borrow_ccy_token.methods.
         balanceOf(borrower).call());
@@ -737,10 +744,18 @@ contract("ZeroLiquidationLoanPool", ([deployer, liquidity_provider_1,
       let amm_weth_balance_pre = new BN(await collateral_ccy_token.methods.
         balanceOf(contract_addr).call());
 
-      let usdc_lent_amount = "100000000000";
-      await borrow_ccy_token.methods.approve(contract_addr, usdc_lent_amount).
-        send({from: lender});
-      await zeroLiquidationLoanPool.lend(usdc_lent_amount, {"from": lender});
+      let usdc_notional_amount = "100000000000";
+      let lending_terms = await zeroLiquidationLoanPool.get_lending_terms(
+        usdc_notional_amount);
+
+      // allow 10bps diff in lendable amount, due to change in time to expiry
+      let max_usdc_lend_amount = (new BN(lending_terms["0"])).mul(
+        new BN("100100")).div(new BN("100000"));
+
+      await borrow_ccy_token.methods.approve(contract_addr,
+        usdc_notional_amount).send({from: lender});
+      await zeroLiquidationLoanPool.lend(max_usdc_lend_amount,
+        usdc_notional_amount, {"from": lender});
 
       let lender_usdc_balance_post = new BN(await borrow_ccy_token.methods.
         balanceOf(lender).call());
@@ -766,8 +781,6 @@ contract("ZeroLiquidationLoanPool", ([deployer, liquidity_provider_1,
 
       expect(lender_weth_balance_diff.toString()).to.equal("0");
       expect(amm_weth_balance_diff.toString()).to.equal("0");
-      expect(loan.received_amount.toString()).to.equal(
-        usdc_lent_amount.toString());
       expect(loan.received_amount.toString()).to.equal(
         lender_usdc_balance_diff.toString());
       expect(loan.received_amount.toString()).to.equal(
