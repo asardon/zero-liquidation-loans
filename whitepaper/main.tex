@@ -33,13 +33,13 @@
 \input{commands}
 
 \begin{abstract}
-Zero-Liquidation loans allow users to borrow \verb|USDC| against their \verb|ETH| holdings, but without the risk of being liquidated in case of LTV shortfalls. This is achieved by giving users the option to repay their loans, either in \verb|USDC| or through their previously pledged \verb|ETH| (the concept can be generalized to other currency pairs as well). Liquidity providers, on the other hand side, are compensated with a higher yield for bearing the \verb|ETH| downside risk. A positive side effect of zero-liquidation loans is that they are more robust against flash crashes and have a lower financial contagion effect than current lending and borrowing protocols. %This downside risk is distributed between junior and senior tranche holders, where losses are first absorbed by junior and subsequently by senior tranche holders, allowing liquidity providers to invest into these tranches separately according to their risk preferences.
+Zero-liquidation loans allow users to borrow \verb|USDC| against their \verb|ETH| holdings, but without the risk of being liquidated in case of LTV shortfalls. This is achieved by giving users the option to repay their loans, either in \verb|USDC| or through their previously pledged \verb|ETH| (the concept can be generalized to other currency pairs as well). Liquidity providers, on the other hand side, are compensated with a higher yield for bearing the \verb|ETH| downside risk. A positive side effect of zero-liquidation loans is that they are more robust against flash crashes and have a lower financial contagion effect than current lending and borrowing protocols. %This downside risk is distributed between junior and senior tranche holders, where losses are first absorbed by junior and subsequently by senior tranche holders, allowing liquidity providers to invest into these tranches separately according to their risk preferences.
 \end{abstract}
 
 \section{Introduction}
-The demand for crypto-collateralized lending and borrowing in DeFi has surged, recently surpassing a TVL of \$40bn in 2021 \cite{aave} \cite{compound}. However, with currently available borrowing products borrowers face two pain points: (1) liquidations and (2) variability in rates. While some solutions already exist to alleviate (2), there currently aren't any products to spare users from (1). Zero-Liquidation loans solve both.\\
+The demand for crypto-collateralized lending and borrowing in DeFi has surged, recently surpassing a TVL of \$40bn in 2021 \cite{aave} \cite{compound}. However, with currently available borrowing products borrowers face two pain points: (1) liquidations and (2) variability in rates. While some solutions already exist to alleviate (2), there currently aren't any products to spare users from (1). zero-liquidation loans solve both.\\
 
-On a YTD basis there have been 9,023 liquidations on Aave with a 7-day liquidation amount of approx. \$37mn \cite{dune}. Liquidations occur when the collateral that borrowers pledge suddenly drops in value. Borrowers, who fail to prevent LTV shortfalls face the risk of having their collateral liquidated and being penalized with liquidation fees. Moreover, commonly used incentive mechanisms tend to favor liquidators over borrowers, causing the problem of so called over-liquidation, leading to unnecessary high losses for borrowers \cite{qin}. In order to avoid liquidations, borrowers need to constantly monitor their LTV and remain alert to quickly respond to changing market conditions. When there are many users with a leveraged long position in the collateral currency, even a random dip in market prices can cause a whole cascade of liquidations, leading to a self-accelerating selling pressure. Such market situations may lead to network congestion and hiking gas costs, as has been the case in the \verb|ETH| market collapse of March 13th 2020 \cite{qin}, leaving some borrowers unable to react despite imminent liquidations. For borrowers who got liquidated it can be particularly annoying if market prices recover after a dip again, leaving them deprived from subsequent upward price participation.\\
+On a YTD basis there have been 9,023 liquidations on Aave with a 7-day liquidation amount of approx. \$37mn \cite{dune}. Liquidations occur when the collateral that borrowers pledge suddenly drops in value. Borrowers, who fail to prevent LTV shortfalls face the risk of having their collateral liquidated and being penalized with liquidation fees. Moreover, commonly used incentive mechanisms tend to favor liquidators over borrowers, causing the problem of so called over-liquidation, leading to unnecessary high losses for borrowers \cite{qin}. In order to avoid liquidations, borrowers need to constantly monitor their LTV and remain alert to quickly respond to changing market conditions. When there are many users with a leveraged long position in the collateral currency, even a random dip in market prices can cause a whole cascade of liquidations, leading to a self-accelerating selling pressure. Such market situations may lead to network congestion and hiking gas costs, as has been the case in the \verb|ETH| market collapse of March 13th 2020 \cite{qin}, leaving some borrowers unable to react despite imminent liquidations. For borrowers who get liquidated it can be particularly annoying if market prices recover after a dip again, leaving them deprived from subsequent upward price participation.\\
 %In times of heightened market stress, this can trigger a downward spiral in market prices. 
 
 
@@ -47,7 +47,7 @@ On a YTD basis there have been 9,023 liquidations on Aave with a 7-day liquidati
 
 \section{Zero-Liquidation Loans}
 \label{sec:zero_liquidation_loans}
-Zero-Liquidation loans resemble so called \emph{double currency notes}, which give borrowers the option to repay a loan in either one of two currencies (e.g., \verb|ETH| or \verb|USDC|). This allows users to borrow funds against their crypto holdings, but without being exposed to any liquidation risk. Liquidity providers, on the other hand side, are compensated with a higher yield.\\
+Zero-liquidation loans resemble so called \emph{double currency notes}, which give borrowers the option to repay a loan in either one of two currencies (e.g., \verb|ETH| or \verb|USDC|). This allows users to borrow funds against their crypto holdings, but without being exposed to any liquidation risk. Liquidity providers, on the other hand side, are compensated with a higher yield.\\
 
 Zero-liquidation loans stand in contrast to currently existing lending and borrowing solutions in DeFi, where users need to constantly monitor their LTV, and hedge against potential shortfalls to avoid having to pay liquidation penalty fees \cite{willtoshower} \cite{interoperate}. \cref{fig:aave_vs_zero_liquidation} illustrates the differences between an Aave and a zero-liquidation loan. It can be seen that borrowers on Aave will have their \verb|ETH| collateral liquidated every time the LTV reaches the liquidation threshold (e.g., 80\%). As a result, an Aave borrower's \verb|ETH| holding will be reduced if the \verb|ETH| price falls to a certain threshold, even if the price moves up again afterwards. In addition, borrowers will be charged a fee every time a liquidation happens. In contrast, with zero-liquidation loans the borrowers' \verb|ETH| holdings remain constant and they don't incur any liquidation fees. At the same time, borrowers still have full upside and only owe the initially borrowed amount or the pledged collateral, whichever is lower.
 
@@ -60,11 +60,11 @@ Zero-liquidation loans stand in contrast to currently existing lending and borro
 
 \subsection{Borrower's Perspective}
 \label{sec:borrower_perspective}
-Assume Bob wants to take out a 90 day loan against his crypto holdings of \verb|1 ETH|, where \verb|1 ETH| is currently worth \verb|4,000 USDC|. With a zero-liquidation loan, he pledges \verb|1 ETH| and receives, e.g., \verb|1,850 USDC| against it as a loan (the exact amount will depend on supply and demand). Then, after 90 days he has the option to reclaim his collateral for a pre-agreed repayment amount of, e.g., \verb|2,000 USDC|. The repayment amount includes the interest cost and is thus higher than the amount previously paid out. So Bob effectively has fixed borrowing costs of \verb|150 USDC|, with an implied APR of 30\%. However, in contrast to existing DeFi lending solutions, like Aave or Compound, Bob isn't exposed to changing borrowing costs and, more importantly, is spared from liquidations. This is because Bob can later choose whether he wants to repay his loan in \verb|USDC| or \verb|ETH|.\\
+Assume Bob wants to take out a 90 day loan against his crypto holdings of \verb|1 ETH|, where \verb|1 ETH| is currently worth \verb|4,000 USDC|. With a zero-liquidation loan, he pledges \verb|1 ETH| and receives, e.g., \verb|1,850 USDC| against it as a loan (the exact amount will depend on supply and demand). Then, after 90 days he has the option to reclaim his collateral for a pre-agreed repayment amount of, e.g., \verb|2,000 USDC|. The repayment amount includes the interest cost and is thus higher than the amount previously paid out. So Bob effectively has fixed borrowing costs of \verb|150 USDC|, with an implied APR of 30\%. However, in contrast to existing DeFi lending solutions Bob isn't exposed to changing borrowing costs and, more importantly, is spared from liquidations. This is because Bob can later choose whether he wants to repay his loan in \verb|USDC| or \verb|ETH|.\\
 
 More specifically, after 90 days Bob can either pay back \verb|2,000 USDC| and receive his originally pledged \verb|1 ETH| back, or, alternatively, simply walk away from the loan. Naturally, Bob will chose whatever option is better for him, i.e., if the price of \verb|1 ETH| is higher than \verb|2,000 USDC|, then he will chose to repay the loan in \verb|USDC|, whereas, if the price of \verb|1 ETH| is below \verb|2,000 USDC| he will be better off leaving his \verb|1 ETH| collateral to the lender, which effectively means he's repaying in \verb|ETH|. Bob's resulting payoff is illustrated in \cref{fig:zero_liquidation_loan}. It can be seen that, even if the \verb|ETH| price drops below \verb|2,000 USDC|, his downside is capped because by having borrowed \verb|1,850 USDC| he has reduced his \verb|ETH| exposure to \verb|4,000 USDC - 1,850 USDC = 2,150 USDC|.\\
 
-Note that while Bob isn't exposed to any liquidation penalty fees, he still has full \verb|ETH| upside. Bob obviously can use the borrowed \verb|1,850 USDC| for whatever he wants, e.g., yield farming or also leveraging his \verb|ETH| position by repeating the previously described borrowing procedure, analogous to how user do it today on lending and borrowing platforms like Aave etc. 
+Note that while Bob isn't exposed to any liquidation penalty fees, he still has full \verb|ETH| upside. Bob obviously can use the borrowed \verb|1,850 USDC| for whatever he wants, e.g., yield farming or also leveraging his \verb|ETH| position by repeating the previously described borrowing procedure, analogous to how users do it today on lending and borrowing platforms like Aave etc. 
 
 \begin{figure}
 \begin{tikzpicture}[scale = 0.68]
@@ -117,7 +117,7 @@ Note that while Bob isn't exposed to any liquidation penalty fees, he still has 
 
 
 \subsection{Liquidity Provider's Perspective}
-Assume Larry holds \verb|2,000 USDC| and wants to boost his APY. He provides his \verb|USDC| to the Zero-Liquidation loan pool and receives a corresponding pro-rata share of the pool's PnL. For example, assume the pool currently has a TVL of \verb|4,000 USDC|, then Larry's pledged liquidity corresponds to a 50\% share. If now someone borrows, e.g., \verb|2,000 USDC| for 90 days from this pool at a borrowing cost of \verb|150 USDC| (see example in \cref{sec:borrower_perspective}), then Larry will be entitled to a 50\% pro-rata share of the thereof resulting PnL.\\
+Assume Larry holds \verb|2,000 USDC| and wants to boost his APY. He provides his \verb|USDC| to the zero-liquidation loan pool and receives a corresponding pro-rata share of the pool's PnL. For example, assume the pool currently has a TVL of \verb|4,000 USDC|, then Larry's pledged liquidity corresponds to a 50\% share. If now someone borrows, e.g., \verb|2,000 USDC| for 90 days from this pool at a borrowing cost of \verb|150 USDC| (see example in \cref{sec:borrower_perspective}), then Larry will be entitled to a 50\% pro-rata share of the thereof resulting PnL.\\
 
 More specifically, if after 90 days the \verb|ETH| price is above \verb|2,000 USDC| then the pool will have earned \verb|150 USDC|, in which case Larry will be credited \verb|75 USDC| (i.e., his 50\% share), implying a 15\% APY. Only if the \verb|ETH| price drops by more than 50\% (the initial LTV), i.e., below \verb|2,000 USDC|, Larry will suffer a loss, which, however, is capped at \verb|-925 USDC|, i.e., even in the most adverse scenario where the \verb|ETH| price drops to zero. \cref{fig:zero_liquidation_loan_deposit} shows the resulting payoff.
 
@@ -344,13 +344,9 @@ In order to see this, let's assume there's an Aave loan that liquidates 100\% of
 
 \section{Automated Market Making}
 \label{sec:AMM}
-As described in \cref{sec:zero_liquididation_loans_and_vanilla_options}, a borrower taking out a zero-liquidation loan is equivalent to a user swapping the underlying $S$ for $C_K+K$. One can use this option-based representation to derive an AMM using the well-known constant product formula.\\
+As described in \cref{sec:zero_liquididation_loans_and_vanilla_options}, a borrower taking out a zero-liquidation loan is equivalent to a user swapping the underlying $S$ for $C_K+K$. \cref{fig:amm1} illustrates the steps involved in the swap. In the following sections we will describe (i) how to determine the borrowable amounts per provided collateral unit, and, (ii) how to determine the strike price for the embedded call option. These two results can then be combined to construct an AMM for trading zero-liquidation loans.
 
-\subsection{Determining borrowable Amounts}
-Let there be an AMM that initially holds $K$ in liquidity and a borrower holding $S$ in crypto (see \cref{fig:amm1}). After taking out a loan, the borrower holds $C_K+K$ and the AMM holds $S-C_K$, i.e., essentially a covered call (see \cref{fig:amm2}).\footnote{Note that, according to the put-call-parity, the AMM's holding is equivalent to $K-P$, which corresponds to the repayment amount described earlier in \cref{sec:zero_liquididation_loans_and_vanilla_options}.}
-
-
-
+%For example, assume there's an AMM that initially holds $K$ in liquidity and a borrower holding $S$ in crypto (see \cref{fig:amm1}). After taking out a loan, the borrower holds $C_K+K$ and the AMM holds $S-C_K$, i.e., essentially a covered call (see \cref{fig:amm2}).\footnote{Note that, according to the put-call-parity, the AMM's holding is equivalent to $K-P$, which corresponds to the repayment amount described earlier in \cref{sec:zero_liquididation_loans_and_vanilla_options}.} 
 
 \begin{figure}
 \begin{center}
@@ -412,29 +408,33 @@ Let there be an AMM that initially holds $K$ in liquidity and a borrower holding
 \end{figure}
 
 
+\subsection{Determining borrowable Amounts and Swap Quantities}
+\label{sec:determining_borrowable_amounts}
 %As described in \cref{sec:relation_to_options}, zero-liquidation loans can be represented as options. More specifically, a borrower can be seen as a user that holds an underlying $S$ and wants to convert this into $C+K$, where $C$ is a call option on the underlying with strike price $K$, where $K$ is equal to the loan value. In other words, the borrower wants to maintain his upside on the collateral (=call option), while at the same time receiving a cash loan value (=strike price), e.g., to invest elsewhere.\\
 
-Now let $Q_S$ denote the quantity of crypto collateral $S$ and $Q_K$ be the quantity of the currency one can borrow from it. Applying the constant product formula we can construct an AMM that swaps $Q_S$ and $Q_K$ according to
+Let $Q_{\mathcal{C}}$ denote the quantity of crypto collateral and $Q_\mathcal{B}$ be the quantity of borrow currency one can borrow. Applying the constant product formula one can construct an AMM that swaps $Q_{\mathcal{C}}$ and $Q_\mathcal{B}$ according to
 \begin{equation}
 \begin{split}
-(Q_S+\Delta Q_S)(Q_K-\Delta Q_K) &= k
+(Q_\mathcal{C}+\Delta Q_\mathcal{C})(Q_\mathcal{B}-\Delta Q_\mathcal{B}) &= k
 \end{split}
 \end{equation}
-where $\Delta Q_S$ and $\Delta Q_K$ denote the corresponding quantity changes and $k$ an AMM constant. To better understand how $Q_K$ relates to $C_K+K$, consider the quantity of call options the AMM can offer to borrowers. Obviously, the quantity will depend on $K$, e.g., if $K=0$ the AMM can always write a call option for every $S$ it receives (this is because a call with strike zero is equal to the underlying). So the quantity of options $C_K$ the AMM can write per se isn't limited, however, the amount of liquidity $K$ it can lend is. The key idea therefore is that by letting the AMM dynamically adjust $K$, one is effectively adjusting two things at the same time: the amount users can borrow as well as the strike price (=repayment amount).\\
+, where $\Delta Q_\mathcal{C}$ and $\Delta Q_\mathcal{B}$ denote the corresponding quantity changes and $k$ an AMM constant. But how do these quantities relate to the quantities of options the borrower receives? Obviously, the borrower will want to have an option for every collateral unit he gives to the AMM. So if he gives $\Delta Q_{\mathcal{C}}$ units of $S$, he expects to receive the same quantity of $C_K$. Luckily, the AMM isn't per se limited on the number of options it can offer to borrowers. This is easy to see when considering that if $K=0$ the AMM can always write an option for every collateral unit $\Delta Q_{\mathcal{C}}$ it receives (this is because a call with strike zero is equal to the underlying).\\
 
-The more users borrow, the lower the amount the AMM can lend, which essentially means each new borrower will receive a lower loan and, correspondingly, a call with a lower strike price, i.e.,
+% So the relationship between $\Delta Q_{\mathcal{C}}$ and $\Delta Q_{\mathcal{B}}$ is not only used to determine the the amount users can borrow but as well the repayment amount, we will later refer to this as the \emph{implied strike price}, of the loan's implicitly embedded call option (see \cref{sec:combining_put_call_parity_with_AMM}).\\
+
+So in case there is increasing demand for borrowings the AMM should lower the borrowable amounts per collateral unit and, consequently, also lower the strike price at which borrowers can reclaim thei collateral, i.e.,
 \begin{equation}
 \label{eq:more_borrowing_strike}
 \begin{split}
-Q_S\uparrow \Rightarrow Q_K\downarrow \Rightarrow K\downarrow.
+Q_{\mathcal{C}}\uparrow \Rightarrow Q_{\mathcal{B}}\downarrow \Rightarrow K\downarrow.
 \end{split}
 \end{equation}
 
-On the other hand side, if liquidity increases then the quantity of underlying collateral decreases, and, in turn, the implied strike price and borrowable amount increases, i.e.,
+And conversely, if there is more lending demand then there will be less collateral available to the AMM, but more borrow currency liquidity, which, in turn, should lead to higher strike prices, i.e.,
 \begin{equation}
 \label{eq:more_lending_strike}
 \begin{split}
-Q_S\downarrow \Rightarrow Q_K\uparrow \Rightarrow K\uparrow.
+Q_{\mathcal{C}}\downarrow \Rightarrow Q_{\mathcal{B}}\uparrow \Rightarrow K\uparrow.
 \end{split}
 \end{equation}
 
@@ -442,36 +442,31 @@ Q_S\downarrow \Rightarrow Q_K\uparrow \Rightarrow K\uparrow.
 \label{sec:borrowing_costs}
 As described in \cref{sec:zero_liquididation_loans_and_vanilla_options}, a user swapping $S$ for $C_K+K$ needs to compensate the AMM for taking on the downside risk. Using the put-call-parity one can see that the swap is fair if
 \begin{equation}
+\label{eq:put_call_parity}
 \begin{split}
-\underbrace{C_K+K-P_K}_{\textrm{what borrower receives}} = \underbrace{S}_{\textrm{what AMM receives}}
+\underbrace{C_K+K-P_K}_{\textrm{what borrower get}} = \underbrace{S}_{\textrm{what borrower gives}}
 \end{split}
 \end{equation}
-where $P_K$ denotes the put option with strike price $K$. This means that, in order to make no party worse off, the borrower needs to pay the AMM the put option premium $P_K$. Obviously, the put price will depend on several factors, in particular the option's strike price, its time to expiry and the underlying's volatility. However, instead of inferring a price $P_K$ that makes the swap fair, we will assume the put price $P_K\stackrel{!}{=}X$ is given and let the market infer the corresponding $K$ such that
+where $P_K$ denotes the put option with strike price $K$. This means that, in order to make no party worse off, the borrower needs to pay the AMM the put option premium $P_K$. The price of the put option depends on several factors, most importantly on the option's strike price, its time to expiry and the underlying's volatility. However, instead of trying to determine a fair value for the put $P_K$, we will assume the put price $P_K\stackrel{!}{=}X$ is given and let the market infer the corresponding $K$ such that the following equality holds
 \begin{equation}
 \label{eq:put_call_parity}
 \begin{split}
 C_K+ \underbrace{K-X}_{\textrm{cash out}} \stackrel{!}{=} S
 \end{split}
 \end{equation}
-where $K-X$ is the net cash amount the borrower effectively receives and $K$ is the amount he has to repay if he wants to reclaim $S$. We will refer to $X$ as the \emph{oblivious put price}. Basically, one could use arbitrary values for $X\in \mathbb R_{\ge 0}$ and always find a solution for \cref{eq:put_call_parity}. However, in order to steer the market towards $K<S$ (i.e., high moneyness of calls $C_K$ and, correspondingly, low LTVs) one can use a put's ATM price as a plausible and easy-to-calculate on-chain value for X, i.e.,
+, where we refer to $X$ as the \emph{oblivious put price} and $K-X$ is the cash amount the borrower effectively receives. Basically, one could use arbitrary values for $X\in \mathbb R_{\ge 0}$ and always find a solution for \cref{eq:put_call_parity}. However, in order to incentive zero-liquidation loans with low LTVs the AMM should steer implied strike prices such that they're lower than the spot value of the collateral, i.e., $K<S$. In other words, $X$ should correspond to the price of an out-of-the-money (OTM) put. One can use a Black-Scholes approximation for an at-the-money put (ATM) as an upper bound value for $X$ which is also easy to compute on-chain, i.e.,
 \begin{equation}
 \begin{split}
 \label{eq:oblivious_put_price}
 X = \alpha \cdot  P_{ATM} = \alpha \cdot 0.4 \cdot  S \cdot \sigma \cdot \sqrt{T-t}
 \end{split}
 \end{equation}
-where $\sigma$ denotes the underlying's volatility, $T-t$ is the option's time to maturity and $0<\alpha<1$ is a scaling factor to steer the market towards $K<S$. Note that $P_K$ is monotonically decreasing in $K$, such that if we set the price $X$ smaller than the put's ATM value, then this implies a higher moneyness of the corresponding call $C_K$. For example, in the extreme case where the \emph{oblivious put price} is $X=0$, the strike level that satisfies \cref{eq:put_call_parity} is $K=0$.\\
+where $\sigma$ denotes the underlying's volatility, $T-t$ is the option's time to maturity and $0<\alpha<1$ is a scaling factor to steer the equilibrium moneyness of the embedded options (or in other words, the LTV of the zero-liquidation loans). Lower $\alpha$ values imply a lower moneyness of the oblivious put, and conversely should steer towards a higher moneyness of the corresponding embedded call option (i.e., lower LTV of the zero-liquidation loan). For example, in the extreme case where $\alpha=0$ then the \emph{oblivious put price} is $X=0$, and the corresponding strike level that satisfies \cref{eq:put_call_parity} is $K=0$ (i.e., maximum moneyness of the call option).\\
 
-So a borrower effectively receives a call option $C_K$ as well as a $CashReceived$ amount from the AMM of
+So a borrower effectively receives a call option $C_K$ as well as a $K-X$ in the borrow currency. In case the borrower wants to reclaim his collateral at expiry he has to pay back $K$. The maximum payable implied borrowing rate is therefore
 \begin{equation}
 \begin{split}
-CashReceived=K-X.
-\end{split}
-\end{equation}
-If the borrower wants to reclaim his collateral at expiry he has to pay back $K$. The implied borrowing rate is therefore
-\begin{equation}
-\begin{split}
-R = \frac{X}{K}.
+R = \frac{X}{K-X}.
 \end{split}
 \end{equation}
 
@@ -493,21 +488,31 @@ R = \frac{X}{K}.
 %\end{equation*}
 %and $\sigma$ denotes the underlying's volatility and $\Phi(.)$ is the normal CDF. So obviously, the put price will depend on For an ATM option the price can be approximated
 
-
+\subsection{Combining Put-Call-Parity with Constant Product AMM}
+\label{sec:combining_put_call_parity_with_AMM}
+We can now combine the results from \cref{sec:determining_borrowable_amounts} and \cref{sec:borrowing_costs} to derive an AMM for zero-liquidation loans. If we define the strike price to equal $K=\frac{\Delta Q_\mathcal{B}}{\Delta Q_\mathcal{C}}$, it then follows from the put-call-parity\footnote{See \cref{eq:put_call_parity}} that the AMM swaps quantities in the borrow and collateral currency according to
+\begin{equation}
+\begin{split}
+C_{\Delta Q_{\mathcal{B}}/\Delta Q_\mathcal{C}} + \frac{\Delta Q_{\mathcal{B}}}{\Delta Q_{\mathcal{C}}} - X &= S \\
+\Delta Q_\mathcal{C} \cdot C_{\Delta Q_{\mathcal{B}}/\Delta Q_\mathcal{C}} + \underbrace{\Delta Q_\mathcal{B} - \Delta Q_\mathcal{B} \cdot  X}_{\textrm{borrow currency}} &= \underbrace{\Delta Q_\mathcal{C} \cdot  S}_{\textrm{collateral currency}} \\
+\end{split}
+\end{equation}
+, meaning that when a user pledges $\Delta Q_\mathcal{C} \cdot S$ in the collateral currency (e.g., \verb|ETH|), he then receives $\Delta Q_\mathcal{B} - \Delta Q_\mathcal{C} \cdot X$ in the borrow currency (e.g., \verb|USDC|).
+%The last step is to chose the strike based on the quantities $\Delta Q_\mathcal{B}$ and $\Delta Q_\mathcal{C}$ determined by the constant product AMM, i.e., . We will refer to this as the \emph{implied strike} strike price. 
 
 \subsection{Arbitrage}
 \label{sec:arbitrage}
-Borrowers will have an arbitrage opportunity whenever the to-be-paid \emph{oblivious put price} $X$ is less than what would be fair according to the put-call-parity, i.e.,
+Borrowers will have an arbitrage opportunity whenever the implicitly to-be-paid \emph{oblivious put price} $X$ is less than what would be fair according to the put-call-parity, i.e.,
 \begin{equation}
 \begin{split}
 \label{eq:arbitrage_borrowers}
-\underbrace{C_K - S}_{\textrm{option's time value}} + K > X \cdot (1+s_{ask})
+\underbrace{C_{\Delta Q_\mathcal{B} / \Delta Q_\mathcal{C}} - S}_{\textrm{option's time value}} + \frac{\Delta Q_\mathcal{B}}{\Delta Q_\mathcal{C}} > X \cdot (1+s_{ask})
 \end{split}
 \end{equation}
 where $s_{ask}$ denotes an ask spread parameter, configurable by the AMM. Note that whenever an arbitrage opportunity arises, borrowers will borrow more funds, which according to \cref{eq:more_borrowing_strike} will lead to smaller borrowable amounts per collateral unit and thereby lead to higher implied interest rates, i.e.,
 \begin{equation}
 \begin{split}
-Q_S\uparrow \Rightarrow Q_K\downarrow \Rightarrow K\downarrow \Rightarrow R\uparrow.
+Q_\mathcal{C}\uparrow \Rightarrow Q_\mathcal{B}\downarrow \Rightarrow K\downarrow \Rightarrow R\uparrow.
 \end{split}
 \end{equation}
 
@@ -515,45 +520,47 @@ Conversely, lenders will have an arbitrage opportunity as soon as the to-be-rece
 \begin{equation}
 \label{eq:option_premium_lenders}
 \begin{split}
-C_K - S + K < X \cdot (1-s_{bid})
+C_{\Delta Q_\mathcal{B} / \Delta Q_\mathcal{C}} - S + \frac{\Delta Q_\mathcal{B}}{\Delta Q_\mathcal{C}} < X \cdot (1-s_{bid})
 \end{split}
 \end{equation}
 where $s_{bid}$ denotes a bid spread configured at inception of the AMM. If there's such an arbitrage opportunity then the quantity of collateral units will decrease and the amount of liquidity increase, leading to higher borrowing amounts demanded by the AMM per collateral unit, and, ultimately, to lower implied interest rates, i.e.,
 \begin{equation}
 \begin{split}
-Q_S\downarrow \Rightarrow Q_K\uparrow \Rightarrow K\uparrow \Rightarrow R\downarrow.
+Q_\mathcal{C}\downarrow \Rightarrow Q_\mathcal{B}\uparrow \Rightarrow K\uparrow \Rightarrow R\downarrow.
 \end{split}
 \end{equation}
 
-\subsection{Numerical Example}
-Let's assume the current \verb|ETH| price is $S_0=4,000$ \verb|USDC|. Further, assume we want to initialize the AMM to provide zero-liquidation loans with an initial $LTV_{init}=50\%$. This can be accomplished by boostrapping the AMM with liquidity contributions $Q_S$ and $Q_K$, such that $Q_S \cdot S_0 = Q_K \cdot LTV_{init}$, i.e., at inception the \verb|ETH| contributions are worth double the \verb|USDC| contributions. For example, if liquidity providers contribute $Q_S=50$ in \verb|ETH| and $Q_K=100,000$ in \verb|USDC| the target LTV is satisfied. In this case, the resulting AMM constant is given by $k=5\cdot10^6$.\\
 
-Further, let $\alpha=0.2$, $S_0=4,000$, $\sigma=100\%$ and $\sqrt{T-t}=1$ such that the initial \emph{oblivious put price} is $X_{init} = 0.2 \cdot 0.4 \cdot 4,000 \cdot 100\% \cdot 1 = 320$ and let the spread be $s=2.5\%$. A borrower could then borrow \verb|1,641 USDC| for \verb|1 ETH|, with a repayment obligation of \verb|1,961 USDC| and an implied borrowing cost of $R=16\%$. Conversely, a lender could receive \verb|1 ETH| for lending \verb|2,041 USDC| and a repayment obligation of \verb|2,345 USDC| with an implied interest rate of $R=13\%$. \cref{tab:example_borrowers} and \cref{tab:example_lenders} provide exemplary terms for borrowing or lending funds to or from the AMM.
+\subsection{Numerical Example}
+Let's assume the current \verb|ETH| price is $S_0=4,000$ \verb|USDC|. Further, assume we want to initialize the AMM to provide zero-liquidation loans with an initial $LTV_{init}=83\%$. This can be accomplished by boostrapping the AMM with liquidity contributions $Q_\mathcal{C}=30$ and $Q_\mathcal{B}=100,000$. In this case, the resulting AMM constant is given by $k=3\cdot10^6$.\\
+
+Further, let $\alpha=0.2$, $S_0=4,000$, $\sigma=100\%$ and $\sqrt{T-t}=1.0$ such that the initial \emph{oblivious put price} is $X_{init} = 0.2 \cdot 0.4 \cdot 4,000 \cdot 100\% \cdot 1 = 800$.\footnote{For simplicity, the spread is assumed to be zero.} A borrower could then borrow \verb|2,426 USDC| for \verb|1 ETH|, with a repayment obligation of \verb|3,226 USDC| and an implied maximum APR of $R=24\%$. Conversely, a lender could lend \verb|1,000 USDC| with a possible repayment by the AMM of \verb|1,310 USDC| with a maximum implied APY of $R=24\%$. \cref{tab:example_borrowers} and \cref{tab:example_lenders} provide exemplary terms for borrowing or lending funds to or from the AMM.
 
 \begin{table}[]
 \small
-\begin{tabular}{p{0.5cm}p{2cm}p{2cm}p{2cm}p{2cm}p{1.5cm}}
+\begin{tabular}{p{0.5cm}p{2.2cm}p{2.2cm}p{2cm}p{2cm}p{1.5cm}}
 \hline
-\textbf{$\Delta Q_S$} & \textbf{borrower's $CashReceived$} & \textbf{borrower's repayment} & \textbf{implied strike} & \textbf{implied LTV} & \textbf{implied interest} \\ \hline
-1                     & 1,641 USDC                  & 1,961 USDC                    & 1,961 USDC              & 50\%                 & 16.3\%                    \\ \hline
-5                     & 7,492 USDC                   & 9,091 USDC                    & 1,818 USDC              & 46\%                 & 17.6\%                    \\ \hline
-10                    & 13,469 USDC                  & 16,667 USDC                   & 1,667 USDC              & 41\%                 & 19.2\%                    \\ \hline
-20                    & 22,175 USDC                  & 28,571 USDC                   & 1,429 USDC              & 35\%                 & 22.4\%                    \\ \hline
+\textbf{$\Delta Q_\mathcal{C}$} & \textbf{borrower's $CashReceived$} & \textbf{borrower's repayment} & \textbf{implied strike} & \textbf{implied LTV} & \textbf{Max. APR} \\ \hline
+1                     & 2,426 USDC                  & 3,226 USDC                    & 3,226 USDC              & 80\%                 & 24\%                    \\ \hline
+5                     & 10,286 USDC                   & 14,286 USDC                    & 2,857 USDC              & 71\%                 & 28\%                    \\ \hline
+10                    & 17,000 USDC                  & 25,000 USDC                   & 2,500 USDC              & 63\%                 & 32\%                    \\ \hline
+20                    & 24,000 USDC                  & 40,000 USDC                   & 2,000 USDC              & 50\%                 & 40\%                    \\ \hline
 \end{tabular}
 \label{tab:example_borrowers}
-\caption{Numerical example of terms for different borrowing amounts $\Delta Q_S$, assuming $S_0=4,000$.}
+\caption{Numerical example of terms for different borrowing amounts $\Delta Q_\mathcal{C}$, assuming $S_0=4,000$.}
 \end{table}
 
 
 \begin{table}[]
 \small
-\begin{tabular}{p{0.5cm}p{2cm}p{2cm}p{2cm}p{2cm}p{1.5cm}}
+\begin{tabular}{p{0.5cm}p{2.2cm}p{2.2cm}p{2cm}p{2cm}p{1.5cm}}
 \hline
-\textbf{$\Delta Q_S$} & \textbf{lender's $CashPaid$} & \textbf{AMM's repayment} & \textbf{implied strike} & \textbf{implied LTV} & \textbf{implied interest} \\ \hline
-1                     & 2,041 USDC                   & 2,345 USDC             & 2,345 USDC                  & 59\%                 & 13.0\%                    \\ \hline
-5                     & 11,111 USDC                  & 12,632 USDC            & 2,526 USDC              & 63\%                 & 12.0\%                    \\ \hline
-10                    & 25,000 USDC                  & 28,042 USDC            & 2,804 USDC              & 70\%                 & 10.8\%                    \\ \hline
-20                    & 66,667 USDC                  & 72,751 USDC            & 3,638 UDSC              & 91\%                 & 8.4\%                     \\ \hline
+\textbf{$\Delta Q_\mathcal{C}$} & \textbf{lender's $CashPaid$} & \textbf{AMM's repayment} & \textbf{implied strike} & \textbf{implied LTV} & \textbf{Max. APY} \\ \hline
+0.03                     & 100 USDC                   & 132 USDC             & 3,338 USDC                  & 83\%                 & 24\%                    \\ \hline
+0.196                     & 500 USDC                  & 657 USDC            & 3,355 USDC              & 84\%                 & 24\%                    \\ \hline
+0.388                    & 1,000 USDC                  & 1,310 USDC            & 3,377 USDC              & 84\%                 & 24\%                    \\ \hline
+3.382                    & 10,000 USDC                  & 12,706 USDC            & 3,757 UDSC              & 94\%                 & 21\%                     \\ \hline
+15.897                    & 100,000 USDC                  & 112,717 USDC            & 7,090 UDSC              & 177\%                 & 11\%                     \\ \hline
 \end{tabular}
 \caption{Numerical example of terms for different lending amounts $CashPaid$, assuming $S_0=4,000$.}
 \label{tab:example_lenders}
@@ -561,20 +568,20 @@ Further, let $\alpha=0.2$, $S_0=4,000$, $\sigma=100\%$ and $\sqrt{T-t}=1$ such t
 
 
 \subsection{No-Shortfall Condition}
-The AMM shall always be able to exercise the call options it holds or acquires. Therefore it needs to be ensured that the AMM's liquidity inventory $Q_K$ is sufficient to cover possible repayment costs. This is particularly crucial in case borrowers want to reclaim their collateral, but the AMM has already transferred the corresponding collateral to lenders. In order to prevent any shortfall scenarios, where the AMM wouldn't be able to exercise its own call options and thus be unable to regain and then return outstanding collateral to borrowers, it needs to be ensured that the option premiums paid to lenders (see \cref{eq:option_premium_lenders}) can never exceed the available funds. More specifically,
+The AMM shall always be able to exercise the call options it holds or acquires. Thus it needs to be ensured that the AMM's liquidity inventory $Q_\mathcal{B}$ is sufficient to cover possible repayment costs with lenders. This is to prevent shortfall scenarios, where the AMM might end up unable to return collateral to borrowers because it doesn't have enough funds to exercise its own call options with lenders and reclaim collateral. Therefore, it needs to be ensured that the total outstanding possible repayment amounts towards lenders (see \cref{eq:option_premium_lenders}) can never exceed the available funds. More specifically,
 \begin{equation}
 \begin{split}
 \small
-\underbrace{ \sum_{i \in \mathcal{L}} \Delta Q_{S,i} \cdot X_i \cdot (1-b_{bid})  + \cancel{\Delta Q_{K,i}} }_{\textrm{worst-case amount to be paid by AMM}} < \underbrace{ Q_{K,0} - \sum_{j \in \mathcal{B}} \Delta Q_{K,j} + \cancel{\sum_{i \in \mathcal{L}} \Delta Q_{K,i}} }_{\textrm{worst-case available liquidity}}
+\underbrace{ \sum_{i \in L} \Delta Q_{\mathcal{C},i} \cdot X_i \cdot (1-s_{bid})  + \cancel{\Delta Q_{\mathcal{B},i}} }_{\textrm{worst-case amount to be paid by AMM}} < \underbrace{ Q_{\mathcal{B},0} - \sum_{j \in B} \Delta Q_{\mathcal{B},j} + \cancel{\sum_{i \in L} \Delta Q_{\mathcal{B},i}} }_{\textrm{worst-case available liquidity}}
 \end{split}
 \end{equation}
-where $\mathcal{L}$ denotes the list of lenders, $\mathcal{B}$ the list of borrowers and $Q_{K, 0}$ the initially available liquidity at inception of the AMM. Note that the here mentioned \emph{no-shortfall condition} is conservative in that it neglects possible borrower repayments, where actually more liquidity would be available.
+, where $L$ denotes the list of lenders, $B$ the list of borrowers and $Q_{\mathcal{B}, 0}$ the initially available liquidity at inception of the AMM. Note that the here mentioned \emph{no-shortfall condition} is conservative in that it neglects possible borrower repayments, which would lead to more liquidity being available to the AMM.
 
 %The option premiums that can be paid to lenders shall therefore always satisfy
 %\begin{equation}
 %\begin{split}
 %\small
-%\Delta Q_S \cdot X_i
+%\Delta Q_\mathcal{C} \cdot X_i
 %\end{split}
 %\end{equation}
 %in order to prevent any shortfalls.
@@ -586,7 +593,7 @@ where $\mathcal{L}$ denotes the list of lenders, $\mathcal{B}$ the list of borro
 %The AMM shall never pay out option premiums $X$ to lenders that might lead to a situation where the AMM is unable to return collateral to users.
 
 
-%The AMM might pay out more option premiums to lenders than it receives from borrowers. This will be the case if the AMM has borrowed more funds than users and the AMM has transferred more collateral than it has received. This can be problematic in case borrowers want to reclaim their collateral but the AMM doesn't hold a sufficient quantity $Q_S$, and first needs to reclaim a corresponding amount itself from lenders. As long as the lender has sufficient capital to cover the repayment costs, this is unproblematic. However, in case the AMM doesn't have sufficient funds to reclaim its collateral, then this will cause a cascade in which borrowers cannot reclaim their collateral. 
+%The AMM might pay out more option premiums to lenders than it receives from borrowers. This will be the case if the AMM has borrowed more funds than users and the AMM has transferred more collateral than it has received. This can be problematic in case borrowers want to reclaim their collateral but the AMM doesn't hold a sufficient quantity $Q_\mathcal{C}$, and first needs to reclaim a corresponding amount itself from lenders. As long as the lender has sufficient capital to cover the repayment costs, this is unproblematic. However, in case the AMM doesn't have sufficient funds to reclaim its collateral, then this will cause a cascade in which borrowers cannot reclaim their collateral. 
 
 %In order to avoid this, the AMM needs to keep track of the number of collateral units that borrowers could potentially reclaim and ensure that he has sufficient funds to exercise the call options he holds towards lenders to compensate for this. The number of potentially reclaimable collateral units is denoted by $\Delta Q_{S,borrowers}$, the quantity of collateral units associated with lenders is $\Delta Q_{S,lenders}$. The corresponding deficit is given by $(\Delta Q_{S,borrowers}-\Delta Q_{S,lenders})X$, i.e., if the AMM has passed on more collateral than borrowers have pledged there is a potential for a shortfall. To avoid this, it must be ensured that 
 
@@ -605,7 +612,7 @@ The plot at the top right shows the implied borrow and deposit rates. In the bac
 
 The plot at the bottom left show the arbitrage trades of borrowers and lenders. One can see that at around \verb|2021-03| the \verb|ETH| price drops from \verb|2,000 USD| to \verb|1,500 USD|, which causes borrowers to start trading against the AMM. This is because the price drop causes the oblivious put price to decrease, i.e., $X\downarrow$, creating arbitrage opportunities for borrowers who, according to \cref{eq:arbitrage_borrowers}, start pushing the strike price downwards to reach an equilibrium state again. Conversely, more lenders tend to trade against the AMM in phases of upward trending \verb|ETH/USD| prices.\\
 
-The plot at the bottom right shows the AMM's inventory in $Q_K$ and $Q_S$. One can see that, at inception, the AMM was bootstrapped with an initial $Q_S$ contribution worth \verb|1.5x| the initial $Q_K$ liquidity provisions in USD terms. Over time, the $Q_K$ inventory tends to increase, which is caused by the upward trend in the \verb|ETH/USD| price, that, in turn, creates arbitrage opportunities for lenders, who then start giving liquidity $\Delta Q_K$ and upside $C_K+K$ to the AMM in return for the oblivious put price premium $X$.\\
+The plot at the bottom right shows the AMM's inventory in $Q_\mathcal{B}$ and $Q_\mathcal{C}$. One can see that, at inception, the AMM was bootstrapped with an initial $Q_\mathcal{C}$ contribution worth \verb|1.5x| the initial $Q_\mathcal{B}$ liquidity provisions in USD terms. Over time, the $Q_\mathcal{B}$ inventory tends to increase, which is caused by the upward trend in the \verb|ETH/USD| price, that, in turn, creates arbitrage opportunities for lenders, who then start giving liquidity $\Delta Q_\mathcal{B}$ and upside $C_K+K$ to the AMM in return for the oblivious put price premium $X$.\\
 
 \begin{figure}
     \includegraphics[width=.49\textwidth]{figures/simulation_2_dt_10.png}\hfill
@@ -616,10 +623,10 @@ The plot at the bottom right shows the AMM's inventory in $Q_K$ and $Q_S$. One c
     \caption{Backtest PnL results for 10 days (top left), 30 days (top right), 90 days (bottom left) and 180 days (bottom right) zero-liquidation loan markets.}\label{fig:backtest_pnl}
 \end{figure}
 
-\cref{fig:backtest_pnl} summarizes how the AMM's PnL would have performed under different market scenarios (again using using historical \verb|ETH/USD| price data for backtesting). The plots compare the AMM's RoI with the RoI of a simple buy\&hold strategy, where an investor, instead of investing $Q_K$ and $Q_S$ into a zero-liquidation loan AMM would have just held $Q_K$ and $Q_S$ during the same time frame. The four plots show backtest results for different time horizons, i.e., the top left is for a 10 days market, the top right for a 30 days, the bottom left for a 90 days and the bottom right for a 180 days market. One can see that the RoI of the AMM tends to outperform a simple buy\&hold strategy by up to 8\%. The relative outperformance tends to be higher for longer dated markets, e.g., up to 3.5\% for 10-day dated and up to 8\% for 180-day dated markets. Moreover, one can observe a positive correlation between the AMM's RoI and the relative outperformance. The AMM's RoI and relative outperformance tends to be highest when \verb|ETH/USD| prices are increasing and, as expected, lowest when prices are falling.
+\cref{fig:backtest_pnl} summarizes how the AMM's PnL would have performed under different market scenarios (again using using historical \verb|ETH/USD| price data for backtesting). The plots compare the AMM's RoI with the RoI of a simple buy\&hold strategy, where an investor, instead of investing $Q_\mathcal{B}$ and $Q_\mathcal{C}$ into a zero-liquidation loan AMM would have just held $Q_\mathcal{B}$ and $Q_\mathcal{C}$ during the same time frame. The four plots show backtest results for different time horizons, i.e., the top left is for a 10 days market, the top right for a 30 days, the bottom left for a 90 days and the bottom right for a 180 days market. One can see that the RoI of the AMM tends to outperform a simple buy\&hold strategy by up to 8\%. The relative outperformance tends to be higher for longer dated markets, e.g., up to 3.5\% for 10-day dated and up to 8\% for 180-day dated markets. Moreover, one can observe a positive correlation between the AMM's RoI and the relative outperformance. The AMM's RoI and relative outperformance tends to be highest when \verb|ETH/USD| prices are increasing and, as expected, lowest when prices are falling.
 
 \section{Closing Remarks}
-Zero-Liquidation loans make DeFi borrowing easier. They eliminate the need to monitor borrowing costs, LTVs, health factors etc., and thereby reduce administrative overhead for borrowers. At the same time, they also offer new yield opportunities for liquidity providers and lenders. In addition, they reduce the risk of financial contagion and avoid fire sales of collateral assets under stressed market conditions. Because zero-liquidation loans are settled without requiring on-chain price data from oracles, they are also more robust against flash crashes. While the herein presented AMM is used to facilitate zero-liquidation loans, its design can be generalized to other option-related payoffs as well. %Moreover, by introducing zero-liquidation loans to DeFi, borrowers can continue to leverage their crypto-holdings, while at the same time reducing the contagion risk that springs from otherwise liquidation-centered borrowing and lending protocol designs.
+Zero-liquidation loans make DeFi borrowing easier. They eliminate the need to monitor borrowing costs, LTVs, health factors etc., and thereby reduce administrative overhead for borrowers. At the same time, they also offer new yield opportunities for liquidity providers and lenders. In addition, they reduce the risk of financial contagion and avoid fire sales of collateral assets under stressed market conditions. Because zero-liquidation loans are settled without requiring on-chain price data from oracles, they are also more robust against flash crashes. While the herein presented AMM is used to facilitate zero-liquidation loans, its design can be generalized to other option-related payoffs as well. %Moreover, by introducing zero-liquidation loans to DeFi, borrowers can continue to leverage their crypto-holdings, while at the same time reducing the contagion risk that springs from otherwise liquidation-centered borrowing and lending protocol designs.
 
 \newpage
 \bibliographystyle{abbrv}
