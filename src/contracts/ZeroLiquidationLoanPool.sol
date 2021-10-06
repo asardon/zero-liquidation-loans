@@ -238,7 +238,10 @@ contract ZeroLiquidationLoanPool is Ownable {
         returns (uint256, uint256, uint256){
         uint256 repayment_amount = get_borrowable_amount(amount_to_be_pledged);
         uint256 interest_amount = get_interest_cost(amount_to_be_pledged);
-        uint256 borrow_ccy_out_amount = repayment_amount.sub(interest_amount);
+        uint256 borrow_ccy_out_amount = 0;
+        if (repayment_amount > interest_amount) {
+            borrow_ccy_out_amount = repayment_amount.sub(interest_amount);
+        }
         return (borrow_ccy_out_amount, interest_amount, repayment_amount);
     }
 
@@ -247,6 +250,9 @@ contract ZeroLiquidationLoanPool is Ownable {
         returns (uint256, uint256, uint256){
         uint256 pledgeable_amount = get_pledgeable_amount(amount_to_be_repaid);
         uint256 interest_amount = get_interest_cost(pledgeable_amount);
+        if (amount_to_be_repaid < interest_amount) {
+            interest_amount = 0;
+        }
         uint256 borrow_ccy_in_amount = amount_to_be_repaid.sub(
             interest_amount);
         return (borrow_ccy_in_amount, pledgeable_amount, interest_amount);

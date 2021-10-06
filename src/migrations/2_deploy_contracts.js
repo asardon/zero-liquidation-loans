@@ -1,7 +1,8 @@
 const ZeroLiquidationLoanPool = artifacts.require("ZeroLiquidationLoanPool");
 const Web3 = require('web3');
 var web3 = new Web3('https://mainnet.infura.io/v3/7d0d81d0919f4f05b9ab6634be01ee73');
-const deploymentConfig = require("../config/deploymentConfig.json");
+//const deploymentConfig = require("../config/deploymentConfig.json");
+const deploymentConfig = require("../config/deploymentConfigTest.json");
 
 console.log("Make sure to keep deploymentConfig up-to-date.")
 console.log("Current deploymentConfig:")

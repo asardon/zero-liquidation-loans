@@ -21,7 +21,7 @@
 \setlength{\tabcolsep}{8pt}
 
 \title{Zero-Liquidation Loans}
-\author{Aetienne Sardon}
+\author{Aetienne Sardon\\\small as@yso.finance}
 
 \date{September 2021}
 
@@ -33,11 +33,11 @@
 \input{commands}
 
 \begin{abstract}
-Zero-liquidation loans allow users to borrow \verb|USDC| against their \verb|ETH| holdings, but without the risk of being liquidated in case of LTV shortfalls. This is achieved by giving users the option to repay their loans, either in \verb|USDC| or through their previously pledged \verb|ETH| (the concept can be generalized to other currency pairs as well). Liquidity providers, on the other hand side, are compensated with a higher yield for bearing the \verb|ETH| downside risk. A positive side effect of zero-liquidation loans is that they are more robust against flash crashes and have a lower financial contagion effect than current lending and borrowing protocols. %This downside risk is distributed between junior and senior tranche holders, where losses are first absorbed by junior and subsequently by senior tranche holders, allowing liquidity providers to invest into these tranches separately according to their risk preferences.
+Zero-liquidation loans allow users to borrow \verb|USDC| against their \verb|ETH| holdings, but without the risk of being liquidated in case of LTV shortfalls. This is achieved by giving users the option to repay their loans, either in \verb|USDC| or through their previously pledged \verb|ETH| (the concept can be generalized to other currency pairs as well). Liquidity providers, on the other hand side, are compensated with a higher yield for bearing the \verb|ETH| downside risk. A positive side effect of zero-liquidation loans is that they are more robust against flash crashes and have a lower risk of triggering financial contagion effects than currently prevailing liquidation-centered design approaches for lending and borrowing in DeFi. %This downside risk is distributed between junior and senior tranche holders, where losses are first absorbed by junior and subsequently by senior tranche holders, allowing liquidity providers to invest into these tranches separately according to their risk preferences.
 \end{abstract}
 
 \section{Introduction}
-The demand for crypto-collateralized lending and borrowing in DeFi has surged, recently surpassing a TVL of \$40bn in 2021 \cite{aave} \cite{compound}. However, with currently available borrowing products borrowers face two pain points: (1) liquidations and (2) variability in rates. While some solutions already exist to alleviate (2), there currently aren't any products to spare users from (1). zero-liquidation loans solve both.\\
+The demand for crypto-collateralized lending and borrowing in DeFi has surged, recently surpassing a TVL of \$40bn in 2021 \cite{aave} \cite{compound}. However, with currently available borrowing products borrowers face two pain points: (i) liquidations and (ii) variability in rates. While some solutions already exist to alleviate (ii), there currently aren't any products to spare users from (ii). Zero-liquidation loans solve both.\\
 
 On a YTD basis there have been 9,023 liquidations on Aave with a 7-day liquidation amount of approx. \$37mn \cite{dune}. Liquidations occur when the collateral that borrowers pledge suddenly drops in value. Borrowers, who fail to prevent LTV shortfalls face the risk of having their collateral liquidated and being penalized with liquidation fees. Moreover, commonly used incentive mechanisms tend to favor liquidators over borrowers, causing the problem of so called over-liquidation, leading to unnecessary high losses for borrowers \cite{qin}. In order to avoid liquidations, borrowers need to constantly monitor their LTV and remain alert to quickly respond to changing market conditions. When there are many users with a leveraged long position in the collateral currency, even a random dip in market prices can cause a whole cascade of liquidations, leading to a self-accelerating selling pressure. Such market situations may lead to network congestion and hiking gas costs, as has been the case in the \verb|ETH| market collapse of March 13th 2020 \cite{qin}, leaving some borrowers unable to react despite imminent liquidations. For borrowers who get liquidated it can be particularly annoying if market prices recover after a dip again, leaving them deprived from subsequent upward price participation.\\
 %In times of heightened market stress, this can trigger a downward spiral in market prices. 
@@ -493,8 +493,8 @@ R = \frac{X}{K-X}.
 We can now combine the results from \cref{sec:determining_borrowable_amounts} and \cref{sec:borrowing_costs} to derive an AMM for zero-liquidation loans. If we define the strike price to equal $K=\frac{\Delta Q_\mathcal{B}}{\Delta Q_\mathcal{C}}$, it then follows from the put-call-parity\footnote{See \cref{eq:put_call_parity}} that the AMM swaps quantities in the borrow and collateral currency according to
 \begin{equation}
 \begin{split}
-C_{\Delta Q_{\mathcal{B}}/\Delta Q_\mathcal{C}} + \frac{\Delta Q_{\mathcal{B}}}{\Delta Q_{\mathcal{C}}} - X &= S \\
-\Delta Q_\mathcal{C} \cdot C_{\Delta Q_{\mathcal{B}}/\Delta Q_\mathcal{C}} + \underbrace{\Delta Q_\mathcal{B} - \Delta Q_\mathcal{B} \cdot  X}_{\textrm{borrow currency}} &= \underbrace{\Delta Q_\mathcal{C} \cdot  S}_{\textrm{collateral currency}} \\
+C_{(\Delta Q_{\mathcal{B}}/\Delta Q_\mathcal{C})} + \frac{\Delta Q_{\mathcal{B}}}{\Delta Q_{\mathcal{C}}} - X &= S \\
+\Delta Q_\mathcal{C} \cdot C_{K} + \underbrace{\Delta Q_\mathcal{B} - \Delta Q_\mathcal{C} \cdot  X}_{\textrm{borrow currency}} &= \underbrace{\Delta Q_\mathcal{C} \cdot  S}_{\textrm{collateral currency}} \\
 \end{split}
 \end{equation}
 , meaning that when a user pledges $\Delta Q_\mathcal{C} \cdot S$ in the collateral currency (e.g., \verb|ETH|), he then receives $\Delta Q_\mathcal{B} - \Delta Q_\mathcal{C} \cdot X$ in the borrow currency (e.g., \verb|USDC|).
@@ -506,7 +506,7 @@ Borrowers will have an arbitrage opportunity whenever the implicitly to-be-paid 
 \begin{equation}
 \begin{split}
 \label{eq:arbitrage_borrowers}
-\underbrace{C_{\Delta Q_\mathcal{B} / \Delta Q_\mathcal{C}} - S}_{\textrm{option's time value}} + \frac{\Delta Q_\mathcal{B}}{\Delta Q_\mathcal{C}} > X \cdot (1+s_{ask})
+\underbrace{C_{(\Delta Q_\mathcal{B} / \Delta Q_\mathcal{C})} - S}_{\textrm{option's time value}} + \frac{\Delta Q_\mathcal{B}}{\Delta Q_\mathcal{C}} > X \cdot (1+s_{ask})
 \end{split}
 \end{equation}
 where $s_{ask}$ denotes an ask spread parameter, configurable by the AMM. Note that whenever an arbitrage opportunity arises, borrowers will borrow more funds, which according to \cref{eq:more_borrowing_strike} will lead to smaller borrowable amounts per collateral unit and thereby lead to higher implied interest rates, i.e.,
@@ -520,7 +520,7 @@ Conversely, lenders will have an arbitrage opportunity as soon as the to-be-rece
 \begin{equation}
 \label{eq:option_premium_lenders}
 \begin{split}
-C_{\Delta Q_\mathcal{B} / \Delta Q_\mathcal{C}} - S + \frac{\Delta Q_\mathcal{B}}{\Delta Q_\mathcal{C}} < X \cdot (1-s_{bid})
+C_{(\Delta Q_\mathcal{B} / \Delta Q_\mathcal{C})} - S + \frac{\Delta Q_\mathcal{B}}{\Delta Q_\mathcal{C}} < X \cdot (1-s_{bid})
 \end{split}
 \end{equation}
 where $s_{bid}$ denotes a bid spread configured at inception of the AMM. If there's such an arbitrage opportunity then the quantity of collateral units will decrease and the amount of liquidity increase, leading to higher borrowing amounts demanded by the AMM per collateral unit, and, ultimately, to lower implied interest rates, i.e.,
@@ -625,8 +625,16 @@ The plot at the bottom right shows the AMM's inventory in $Q_\mathcal{B}$ and $Q
 
 \cref{fig:backtest_pnl} summarizes how the AMM's PnL would have performed under different market scenarios (again using using historical \verb|ETH/USD| price data for backtesting). The plots compare the AMM's RoI with the RoI of a simple buy\&hold strategy, where an investor, instead of investing $Q_\mathcal{B}$ and $Q_\mathcal{C}$ into a zero-liquidation loan AMM would have just held $Q_\mathcal{B}$ and $Q_\mathcal{C}$ during the same time frame. The four plots show backtest results for different time horizons, i.e., the top left is for a 10 days market, the top right for a 30 days, the bottom left for a 90 days and the bottom right for a 180 days market. One can see that the RoI of the AMM tends to outperform a simple buy\&hold strategy by up to 8\%. The relative outperformance tends to be higher for longer dated markets, e.g., up to 3.5\% for 10-day dated and up to 8\% for 180-day dated markets. Moreover, one can observe a positive correlation between the AMM's RoI and the relative outperformance. The AMM's RoI and relative outperformance tends to be highest when \verb|ETH/USD| prices are increasing and, as expected, lowest when prices are falling.
 
+%\section{Future Work}
+%* Fixed tenor
+%* Currency pair LINK/USDC
+%* Tranching
+
+%\section{Acknowledgments}
+%...
+
 \section{Closing Remarks}
-Zero-liquidation loans make DeFi borrowing easier. They eliminate the need to monitor borrowing costs, LTVs, health factors etc., and thereby reduce administrative overhead for borrowers. At the same time, they also offer new yield opportunities for liquidity providers and lenders. In addition, they reduce the risk of financial contagion and avoid fire sales of collateral assets under stressed market conditions. Because zero-liquidation loans are settled without requiring on-chain price data from oracles, they are also more robust against flash crashes. While the herein presented AMM is used to facilitate zero-liquidation loans, its design can be generalized to other option-related payoffs as well. %Moreover, by introducing zero-liquidation loans to DeFi, borrowers can continue to leverage their crypto-holdings, while at the same time reducing the contagion risk that springs from otherwise liquidation-centered borrowing and lending protocol designs.
+Zero-liquidation loans make DeFi borrowing easier. They eliminate the need to monitor borrowing costs, LTVs, health factors etc., and thereby reduce administrative and operational overhead for borrowers. At the same time, they also offer new yield opportunities for liquidity providers and lenders. By providing an alternative to the otherwise liquidation-centered design approach of current DeFi lending and borrowing protocols, the risk of financial contagion can be reduced and fire sales of collateral assets under stressed market conditions can be avoided. Because zero-liquidation loans are settled without requiring on-chain price data from oracles, they are also more robust against flash crashes. While the herein presented AMM is used to facilitate zero-liquidation loans, its design can be adapted to other option related payoff structures and structured products as well (e.g., reverse convertibles). %Moreover, by introducing zero-liquidation loans to DeFi, borrowers can continue to leverage their crypto-holdings, while at the same time reducing the contagion risk that springs from otherwise liquidation-centered borrowing and lending protocol designs.
 
 \newpage
 \bibliographystyle{abbrv}
