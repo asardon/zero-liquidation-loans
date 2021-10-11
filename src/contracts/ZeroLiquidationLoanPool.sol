@@ -191,11 +191,10 @@ contract ZeroLiquidationLoanPool is Ownable {
         public lpPeriodActive
     {
 
-        uint256 ratio = borrow_ccy_amount.mul(decimals).div(
-            collateral_ccy_amount
-        );
+        uint256 borrow_ccy_amount_exp = collateral_ccy_amount.mul(
+            borrow_ccy_to_collateral_ccy_ratio);
         require(
-            ratio == borrow_ccy_to_collateral_ccy_ratio,
+            borrow_ccy_amount == borrow_ccy_amount_exp,
             "Must provide ccys in proper ratio"
         );
         collateral_ccy_token.transferFrom(
