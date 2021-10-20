@@ -9,7 +9,7 @@ chai.use(require('chai-bn')(BN));
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 const USDC_HOLDER_ADDRESS = "0x47ac0fb4f2d84898e4d9e7b4dab3c24507a6d503"; // check with ganache unlock
 const WETH_HOLDER_ADDRESS = "0xf04a5cc80b1e94c69b48f5ee68a08cd2f09a7c3e"; // check with ganache unlock
-const deploymentConfig = require("../config/deploymentConfig.json");
+const deploymentConfig = require("../config/deploymentConfigTestMainnetForkWethUsdc.json");
 
 console.log("Make sure to run ganache with matching unlock addreses.")
 console.log("Tests expect the following addresses to be unlocked:")
@@ -308,18 +308,40 @@ contract("ZeroLiquidationLoanPool", ([deployer, liquidity_provider_1,
         "Post-settlement period not active");
     });
 
+    it("must calculate liquidity provisioning amounts correctly (1/3)",
+    async () => {
+      let weth_amount = ether('1');
+      let usdc_amount = await zeroLiquidationLoanPool.get_lp_borrow_ccy_amount(
+        weth_amount);
+      expect(usdc_amount.toString()).to.equal("2000000000");
+    });
+
+    it("must calculate liquidity provisioning amounts correctly (2/3)",
+    async () => {
+      let usdc_amount = "2000000000" // 2000 USDC
+      let weth_amount = await zeroLiquidationLoanPool.get_lp_collateral_ccy_amount(
+        usdc_amount);
+      expect(weth_amount.toString()).to.equal("1000000000000000000");
+    });
+
+    it("must calculate liquidity provisioning amounts correctly (3/3)",
+    async () => {
+      let weth_amount = ether('3');
+      let usdc_amount = await zeroLiquidationLoanPool.get_lp_borrow_ccy_amount(
+        weth_amount);
+      let weth_amount_inverse = await zeroLiquidationLoanPool.
+        get_lp_collateral_ccy_amount(usdc_amount);
+      expect(weth_amount.toString()).to.equal(weth_amount_inverse.toString());
+    });
+
     it("must be fundable by liquidity providers during LP period (1/3)",
     async () => {
-      let borrow_ccy_to_collateral_ccy_ratio = await zeroLiquidationLoanPool.
-        borrow_ccy_to_collateral_ccy_ratio.call();
-      let decimals = await zeroLiquidationLoanPool.decimals.call();
-
       let weth_amount = ether('80');
       await collateral_ccy_token.methods.approve(contract_addr, weth_amount).
         send({from: liquidity_provider_1});
 
-      let usdc_amount = weth_amount.mul(borrow_ccy_to_collateral_ccy_ratio).div(
-        decimals);
+      let usdc_amount = await zeroLiquidationLoanPool.get_lp_borrow_ccy_amount(
+        weth_amount);
       await borrow_ccy_token.methods.approve(contract_addr, usdc_amount).send(
         {from: liquidity_provider_1});
 
@@ -356,15 +378,12 @@ contract("ZeroLiquidationLoanPool", ([deployer, liquidity_provider_1,
 
     it("must be fundable by liquidity providers during LP period (2/3)",
     async () => {
-      let borrow_ccy_to_collateral_ccy_ratio = await zeroLiquidationLoanPool.
-        borrow_ccy_to_collateral_ccy_ratio.call();
-      let decimals = await zeroLiquidationLoanPool.decimals.call();
-
       let weth_amount = ether('41');
       await collateral_ccy_token.methods.approve(contract_addr, weth_amount).
         send({from: liquidity_provider_2});
-      let usdc_amount = weth_amount.mul(borrow_ccy_to_collateral_ccy_ratio).
-        div(decimals);
+
+      let usdc_amount = await zeroLiquidationLoanPool.get_lp_borrow_ccy_amount(
+        weth_amount);
       await borrow_ccy_token.methods.approve(contract_addr, usdc_amount).send(
         {from: liquidity_provider_2});
 
@@ -405,15 +424,12 @@ contract("ZeroLiquidationLoanPool", ([deployer, liquidity_provider_1,
 
     it("must be fundable by liquidity providers during LP period (3/3)",
     async () => {
-      let borrow_ccy_to_collateral_ccy_ratio = await zeroLiquidationLoanPool.
-        borrow_ccy_to_collateral_ccy_ratio.call();
-      let decimals = await zeroLiquidationLoanPool.decimals.call();
-
       let weth_amount = ether('28');
       await collateral_ccy_token.methods.approve(contract_addr, weth_amount).
         send({from: liquidity_provider_3});
-      let usdc_amount = weth_amount.mul(borrow_ccy_to_collateral_ccy_ratio).
-        div(decimals);
+
+      let usdc_amount = await zeroLiquidationLoanPool.get_lp_borrow_ccy_amount(
+        weth_amount);
       await borrow_ccy_token.methods.approve(contract_addr, usdc_amount).send(
         {from: liquidity_provider_3});
 
