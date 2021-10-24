@@ -1,7 +1,7 @@
 {
   "lp_duration": "100",
-  "amm_duration": "160000",
-  "settlement_duration": "160000",
+  "amm_duration": "320000",
+  "settlement_duration": "17280",
   "collateral_ccy": "0xd0a1e359811322d97991e03f863a0c30c2cf029c",
   "borrow_ccy": "0xff795577d9ac8bd7d90ee22b6c1703490b6512fd",
   "collateral_ccy_eq_factor": "2000",

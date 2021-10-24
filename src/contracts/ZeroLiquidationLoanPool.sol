@@ -234,15 +234,15 @@ contract ZeroLiquidationLoanPool is Ownable {
     function get_lp_borrow_ccy_amount(uint256 collateral_ccy_amount)
         public view returns (uint256)
     {
-        return collateral_ccy_amount.mul(collateral_ccy_eq_factor).div(
-            borrow_ccy_eq_factor);
+        return collateral_ccy_amount.mul(decimals).mul(
+            collateral_ccy_eq_factor).div(borrow_ccy_eq_factor).div(decimals);
     }
 
     function get_lp_collateral_ccy_amount(uint256 borrow_ccy_amount)
         public view returns (uint256)
     {
-        return borrow_ccy_amount.mul(borrow_ccy_eq_factor).div(
-            collateral_ccy_eq_factor);
+        return borrow_ccy_amount.mul(decimals).mul(borrow_ccy_eq_factor).div(
+            collateral_ccy_eq_factor).div(decimals);
     }
 
     function provide_liquidity_and_receive_shares(
@@ -251,15 +251,23 @@ contract ZeroLiquidationLoanPool is Ownable {
     )
         public lpPeriodActive
     {
-
+        require(
+            collateral_ccy_amount > 0,
+            "collateral ccy amount must be > 0"
+        );
+        require(
+            borrow_ccy_amount > 0,
+            "borrow ccy amount must be > 0"
+        );
+        uint256 collateral_ccy_amount_exp = get_lp_collateral_ccy_amount(
+            borrow_ccy_amount);
         uint256 borrow_ccy_amount_exp = get_lp_borrow_ccy_amount(
             collateral_ccy_amount);
         require(
-            borrow_ccy_amount_exp == borrow_ccy_amount,
-            "Unexpected borrow ccy amount"
+            ((collateral_ccy_amount_exp == collateral_ccy_amount) ||
+            (borrow_ccy_amount_exp == borrow_ccy_amount)),
+            "Unexpected amounts"
         );
-        require(collateral_ccy_amount > 0, "collateral ccy must be > 0");
-        require(borrow_ccy_amount > 0, "collateral ccy must be > 0");
         collateral_ccy_token.transferFrom(
             msg.sender,
             address(this),
