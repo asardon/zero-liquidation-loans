@@ -17,7 +17,8 @@ contract ZeroLiquidationLoanPool is Ownable {
     uint256 public settlement_end;
     ERC20 public collateral_ccy_token;
     ERC20 public borrow_ccy_token;
-    uint256 public borrow_ccy_to_collateral_ccy_ratio;
+    uint256 public collateral_ccy_eq_factor;
+    uint256 public borrow_ccy_eq_factor;
     uint256 public alpha;
     uint256 public collateral_price;
     uint256 public collateral_price_annualized_vol;
@@ -62,6 +63,7 @@ contract ZeroLiquidationLoanPool is Ownable {
         uint256 collateral_price_vol,
         uint256 blocks_per_year
     );
+    event InitializeAMM();
     event CloseLoan(
         address borrower,
         address lender,
@@ -70,6 +72,48 @@ contract ZeroLiquidationLoanPool is Ownable {
         uint256 pledged_amount,
         LoanState state
     );
+    event Borrow(
+        address borrower,
+        uint256 borrow_ccy_out_amount,
+        uint256 repayment_amount,
+        uint256 interest_amount,
+        uint256 pledge_amount,
+        uint256 collateral_price,
+        uint256 collateral_price_annualized_vol
+    );
+    event Lend(
+        address lender,
+        uint256 borow_ccy_in_amount,
+        uint256 repayment_amount,
+        uint256 interest_amount,
+        uint256 pledge_amount,
+        uint256 collateral_price,
+        uint256 collateral_price_annualized_vol
+    );
+    event RepayBorrow(
+        address borrower,
+        uint256 loan_idx,
+        uint256 loan_repayment_amount,
+        uint256 loan_pledged_amount
+    );
+    event RepayLend(
+        address lender,
+        uint256 loan_idx,
+        uint256 loan_repayment_amount,
+        uint256 loan_pledged_amount
+    );
+    event ReclaimCollateral(
+        address borrower,
+        uint256 loan_idx,
+        uint256 loan_repayment_amount,
+        uint256 loan_pledged_amount
+    );
+    event RedeemShares(
+        address holder,
+        uint256 pool_shares,
+        uint256 pro_rata_collateral_ccy_share,
+        uint256 pro_rata_borrow_ccy_share
+    );
 
     constructor(
         uint256 _lp_duration,
@@ -77,7 +121,8 @@ contract ZeroLiquidationLoanPool is Ownable {
         uint256 _settlement_duration,
         address _collateral_ccy,
         address _borrow_ccy,
-        uint256 _borrow_ccy_to_collateral_ccy_ratio,
+        uint256 _collateral_ccy_eq_factor,
+        uint256 _borrow_ccy_eq_factor,
         uint256 _alpha,
         uint256 _init_collateral_price,
         uint256 _init_collateral_price_annualized_vol,
@@ -96,7 +141,7 @@ contract ZeroLiquidationLoanPool is Ownable {
         );
         require(
             _init_collateral_price_annualized_vol > 0,
-            "_init_collateral_price_annualized_vol must be > 0"
+            "_init_collateral_price_annualiratiozed_vol must be > 0"
         );
         require(_blocks_per_year > 0, "_blocks_per_year must be > 0");
         require(_decimals > 0, "_decimals must be > 0");
@@ -106,7 +151,8 @@ contract ZeroLiquidationLoanPool is Ownable {
         settlement_end = amm_end.add(_settlement_duration);
         collateral_ccy_token = ERC20(_collateral_ccy);
         borrow_ccy_token = ERC20(_borrow_ccy);
-        borrow_ccy_to_collateral_ccy_ratio = _borrow_ccy_to_collateral_ccy_ratio;
+        collateral_ccy_eq_factor = _collateral_ccy_eq_factor;
+        borrow_ccy_eq_factor = _borrow_ccy_eq_factor;
         alpha = _alpha;
         collateral_price = _init_collateral_price;
         collateral_price_annualized_vol = _init_collateral_price_annualized_vol;
@@ -184,18 +230,43 @@ contract ZeroLiquidationLoanPool is Ownable {
         return block.number > settlement_end;
     }
 
+
+    function get_lp_borrow_ccy_amount(uint256 collateral_ccy_amount)
+        public view returns (uint256)
+    {
+        return collateral_ccy_amount.mul(decimals).mul(
+            collateral_ccy_eq_factor).div(borrow_ccy_eq_factor).div(decimals);
+    }
+
+    function get_lp_collateral_ccy_amount(uint256 borrow_ccy_amount)
+        public view returns (uint256)
+    {
+        return borrow_ccy_amount.mul(decimals).mul(borrow_ccy_eq_factor).div(
+            collateral_ccy_eq_factor).div(decimals);
+    }
+
     function provide_liquidity_and_receive_shares(
         uint256 collateral_ccy_amount,
         uint256 borrow_ccy_amount
     )
         public lpPeriodActive
     {
-
-        uint256 borrow_ccy_amount_exp = collateral_ccy_amount.mul(
-            borrow_ccy_to_collateral_ccy_ratio);
         require(
-            borrow_ccy_amount == borrow_ccy_amount_exp,
-            "Must provide ccys in proper ratio"
+            collateral_ccy_amount > 0,
+            "collateral ccy amount must be > 0"
+        );
+        require(
+            borrow_ccy_amount > 0,
+            "borrow ccy amount must be > 0"
+        );
+        uint256 collateral_ccy_amount_exp = get_lp_collateral_ccy_amount(
+            borrow_ccy_amount);
+        uint256 borrow_ccy_amount_exp = get_lp_borrow_ccy_amount(
+            collateral_ccy_amount);
+        require(
+            ((collateral_ccy_amount_exp == collateral_ccy_amount) ||
+            (borrow_ccy_amount_exp == borrow_ccy_amount)),
+            "Unexpected amounts"
         );
         collateral_ccy_token.transferFrom(
             msg.sender,
@@ -230,6 +301,7 @@ contract ZeroLiquidationLoanPool is Ownable {
     function initialize_amm() public pendingInitialization {
         amm_constant = collateral_ccy_supply.mul(borrow_ccy_supply);
         amm_is_initialized = true;
+        emit InitializeAMM();
     }
 
     function get_borrowing_terms(uint256 amount_to_be_pledged)
@@ -291,9 +363,8 @@ contract ZeroLiquidationLoanPool is Ownable {
         );
         borrows[msg.sender].push(loan);
 
-        emit OpenLoan(
+        emit Borrow(
             msg.sender,
-            address(this),
             borrow_ccy_out_amount,
             repayment_amount,
             interest_amount,
@@ -336,8 +407,7 @@ contract ZeroLiquidationLoanPool is Ownable {
         );
         lends[msg.sender].push(loan);
 
-        emit OpenLoan(
-            address(this),
+        emit Lend(
             msg.sender,
             borow_ccy_in_amount,
             repayment_amount,
@@ -390,13 +460,11 @@ contract ZeroLiquidationLoanPool is Ownable {
 
         loan.state = LoanState.REPAID;
 
-        emit CloseLoan(
+        emit RepayBorrow(
             msg.sender,
-            address(this),
             loan_idx,
             loan.repayment_amount,
-            loan.pledged_amount,
-            LoanState.REPAID
+            loan.pledged_amount
         );
     }
 
@@ -427,13 +495,11 @@ contract ZeroLiquidationLoanPool is Ownable {
 
         loan.state = LoanState.REPAID;
 
-        emit CloseLoan(
-            address(this),
+        emit RepayLend(
             msg.sender,
             loan_idx,
             loan.repayment_amount,
-            loan.pledged_amount,
-            LoanState.REPAID
+            loan.pledged_amount
         );
     }
 
@@ -452,23 +518,22 @@ contract ZeroLiquidationLoanPool is Ownable {
         collateral_ccy_token.transfer(msg.sender, loan.pledged_amount);
         loan.state = LoanState.RECLAIMED;
 
-        emit CloseLoan(
-            address(this),
+        emit ReclaimCollateral(
             msg.sender,
             loan_idx,
             loan.repayment_amount,
-            loan.pledged_amount,
-            LoanState.RECLAIMED
+            loan.pledged_amount
         );
     }
 
     function redeem_shares() public postSettlementPeriodActive {
         require(pool_shares[msg.sender] > 0, "User must hold > 0 shares");
+        uint256 _pool_shares = pool_shares[msg.sender];
         uint256 pro_rata_collateral_ccy_share = collateral_ccy_supply.mul(
-            pool_shares[msg.sender]).mul(decimals).div(total_pool_shares).div(
+            _pool_shares).mul(decimals).div(total_pool_shares).div(
             decimals);
         uint256 pro_rata_borrow_ccy_share = borrow_ccy_supply.mul(
-            pool_shares[msg.sender]).mul(decimals).div(total_pool_shares).div(
+            _pool_shares).mul(decimals).div(total_pool_shares).div(
             decimals);
         collateral_ccy_token.transfer(
             msg.sender,
@@ -480,8 +545,15 @@ contract ZeroLiquidationLoanPool is Ownable {
             pro_rata_borrow_ccy_share
         );
         borrow_ccy_supply.sub(pro_rata_borrow_ccy_share);
-        total_pool_shares.sub(pool_shares[msg.sender]);
+        total_pool_shares.sub(_pool_shares);
         pool_shares[msg.sender] = 0;
+
+        emit RedeemShares(
+            msg.sender,
+            _pool_shares,
+            pro_rata_collateral_ccy_share,
+            pro_rata_borrow_ccy_share
+        );
     }
 
     function get_borrowable_amount(
