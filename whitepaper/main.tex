@@ -14,16 +14,16 @@
 \usepackage{hyperref}
 \usepackage[capitalise]{cleveref}
 
-\usepackage{draftwatermark}
-\SetWatermarkText{Draft}
-\SetWatermarkScale{5}
+%\usepackage{draftwatermark}
+%\SetWatermarkText{Draft}
+%\SetWatermarkScale{5}
 
 \setlength{\tabcolsep}{8pt}
 
-\title{Zero-Liquidation Loans}
-\author{\small{as@myso.finance}}
+\title{Zero-Liquidation Loans:\\A Structured Product Approach to DeFi Lending}
+\author{Aetienne Sardon\\\small{as@myso.finance}}
 
-\date{September 2021}
+\date{October 2021\\\small{V1}}
 
 \begin{document}
 
@@ -454,7 +454,7 @@ where $P_K$ denotes the put option with strike price $K$. This means that, in or
 C_K+ \underbrace{K-X}_{\textrm{cash out}} \stackrel{!}{=} S
 \end{split}
 \end{equation}
-, where we refer to $X$ as the \emph{oblivious put price} and $K-X$ is the cash amount the borrower effectively receives. Basically, one could use arbitrary values for $X\in \mathbb R_{\ge 0}$ and always find a solution for \cref{eq:put_call_parity}. However, in order to incentive zero-liquidation loans with low LTVs the AMM should steer implied strike prices such that they're lower than the spot value of the collateral, i.e., $K<S$. In other words, $X$ should correspond to the price of an out-of-the-money (OTM) put. One can use a Black-Scholes approximation for an at-the-money put (ATM) as an upper bound value for $X$ which is also easy to compute on-chain, i.e.,
+, where we refer to $X$ as the \emph{oblivious put price} and $K-X$ is the cash amount the borrower effectively receives. Basically, one could use arbitrary values for $X\in \mathbb R_{\ge 0}$ and always find a corresponding strike $K^*$ that satisfies \cref{eq:put_call_parity}. However, in order to incentive zero-liquidation loans with low LTVs the AMM should steer implied strike prices such that they're lower than the spot value of the collateral, i.e., $K<S$. In other words, $X$ should correspond to the price of an out-of-the-money (OTM) put. One can use a Black-Scholes approximation for an at-the-money put (ATM) as an upper bound value for $X$ which is also easy to compute on-chain, i.e.,
 \begin{equation}
 \begin{split}
 \label{eq:oblivious_put_price}
@@ -530,6 +530,44 @@ Q_\mathcal{C}\downarrow \Rightarrow Q_\mathcal{B}\uparrow \Rightarrow K\uparrow 
 \end{split}
 \end{equation}
 
+\subsubsection{Using Flash Loans to arb underpriced Call Options}
+Borrowers may use flash loans to instantly take advantage of arbitrage opportunities arising between zero-liquidation loans and option markets. For example, let's assume 1 \verb|ETH| is currently trading at $S=\textrm{4,140 USD}$. Moreover, assume there's currently an offer for a zero-liquidation loan with maturity 31 Dec, that pays out $\textrm{1,900 USD}$\footnote{This upfront amount corresponds to $K-X$ from \cref{eq:put_call_parity}.} upfront for 1 \verb|ETH| collateral for a final repayment amount of 1,920 USD. Lastly, assume there's a call option on \verb|ETH| with expiry 31 Dec and strike $K=\textrm{1,920 USD}$ currently trading for $C_K=\textrm{2,450 USD}$. A user can now do an arbitrage by doing the following steps (see also \cref{fig:zero_liquidation_loan_use_case}):
+\begin{enumerate}
+\item Borrow 4,140 USD via flash loan 
+\item Buy 1 \verb|ETH| for 4,140 USD
+\item Pledge 1 \verb|ETH| as collateral in zero-liquidation loan
+\item Receive the following two:
+\begin{enumerate}
+\item 1,900 USD in cash upfront
+\item call option to reclaim \verb|ETH| for 1,920 USD
+\end{enumerate}
+\item Sell call option for 2,450 USD
+\item Pay back flash loan and keep arbitrage profit of 210 USD\footnote{This is because: (upfront cash)+(call premium)-(repayment)=1,900+2,450-4,140=210.}
+\end{enumerate}
+Here, the arbitrage opportunity comes from the fact that the implied call option of the zero-liquidation loan can be sold at a premium, and the upfront cash amount paid out is relatively seen ``too high''. Note that such an arbitrage opportunity assumes that the zero-liquidation loan related option can be transferred and resold in the corresponding open market, i.e., it requires compatibility with the given option market.
+\begin{figure}
+    \centering
+    \includegraphics[width=1.0\textwidth]{figures/zero_liquidation_loan_use_case.png}
+    \cprotect\caption{\small Using a flash loan to exploit an arbitrage opportunity on the borrowing side.}
+    \label{fig:zero_liquidation_loan_use_case}
+\end{figure}
+
+\subsubsection{Using 3rd Party Borrowing Markets to arb overpriced Put Options}
+Lenders may take advantage of situations where the oblivious put price applied by the AMM is ``too high'' relative a corresponding option market. For example, let's assume there's a borrowing market that offers a fixed loan of 1,920 USD for a repayment amount of 1,930 USD due at 31 Dec. Further, assume a zero-liquidation loan lets lenders invest 1,900 USD for a possible repayment amount of 1,930 USD at 31 Dec, secured by 1 \verb|ETH| of collateral. Lastly, assume there's an option market where a put option on \verb|ETH| with strike price $K=\textrm{1,930 USD}$ and expiry on 31 Dec is trading for $P_K=\textrm{10 USD}$. A lender can then do an arbitrage as follows (see also \cref{fig:lend_arbitrage_use_case}):
+\begin{enumerate}
+\item Borrow 1,920 USD with at a fixed repayment amount of 1,930 USD
+\item Lend 1,900 USD to the zero-liquidation loan market
+\item Secure possible repayment of 1,930 USD, collateralized with 1 
+\item Buy put option with strike 1,930 USD
+\item Pay back loan at expiry and keep arbitrage profit of 10 USD\footnote{This is because: (repayment from zero-liquidation loan and put option)-(repayment amount due)+(initial borrow amount)-(lent amount)-(put premium paid)=1,930+ 1,920-1,900-10=10.}
+\end{enumerate}
+The lender is able to make an arbitrage profit because he has effectively hedged his downside risk by buying a put and hence will always be able to repay his original loan of 1,930 USD, whilst having only lent out a ``too small'' amount. In case 1 \verb|ETH| is worth more than the strike price, the lender will receive back 1,930 USD from the zero-liquidation loan market, and otherwise, will get the 1 \verb|ETH| collateral and in addition receive the corresponding put payoff, effectively offsetting his downside risk. At the same time, from the 1,920 USD he borrowed he only had to ``use'' 1,900 USD for the lending transaction and 10 USD to buy the put. Note that a flash loan cannot be used in this scenario because arbing the lending side of a zero-liquidation loan requires cash to be tied up for the corresponding loan duration.
+\begin{figure}
+    \centering
+    \includegraphics[width=0.68\textwidth]{figures/lend_arbitrage_use_case.png}
+    \cprotect\caption{\small Steps to exploit an arbitrage opportunity on the lender side.}
+    \label{fig:lend_arbitrage_use_case}
+\end{figure}
 
 \subsection{Numerical Example}
 Let's assume the current \verb|ETH| price is $S_0=4,000$ \verb|USDC|. Further, assume we want to initialize the AMM to provide zero-liquidation loans with an initial $LTV_{init}=83\%$. This can be accomplished by boostrapping the AMM with liquidity contributions $Q_\mathcal{C}=30$ and $Q_\mathcal{B}=100,000$. In this case, the resulting AMM constant is given by $k=3\cdot10^6$.\\
@@ -638,6 +676,6 @@ Zero-liquidation loans make DeFi borrowing easier. They eliminate the need to mo
 
 \newpage
 \bibliographystyle{abbrv}
-\bibliography{bibliography}
+\bibliography{main}
 
 \end{document}
