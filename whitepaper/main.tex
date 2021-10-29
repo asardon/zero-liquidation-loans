@@ -23,7 +23,7 @@
 \title{Zero-Liquidation Loans:\\A Structured Product Approach to DeFi Lending}
 \author{Aetienne Sardon\\\small{as@myso.finance}}
 
-\date{October 2021\\\small{V1}}
+\date{October 2021\\\small{V1.1}}
 
 \begin{document}
 
@@ -37,9 +37,9 @@ Zero-liquidation loans allow users to borrow \verb|USDC| against their \verb|ETH
 \end{abstract}
 
 \section{Introduction}
-The demand for crypto-collateralized lending and borrowing in DeFi has surged, recently surpassing a TVL of \$40bn in 2021 \cite{aave} \cite{compound}. However, with currently available borrowing products borrowers face two pain points: (i) liquidations and (ii) variability in rates. While some solutions already exist to alleviate (ii), there currently aren't any products to spare users from (ii). Zero-liquidation loans solve both.\\
+The demand for crypto-collateralized lending and borrowing in DeFi has surged, recently surpassing a TVL of \$40bn in 2021 \cite{aave} \cite{compound}. However, with currently available borrowing products borrowers face two pain points: (i) liquidations and (ii) variability in rates. While some solutions already exist to alleviate (ii), there currently aren't any products to spare users from (i). Zero-liquidation loans solve both.\\
 
-On a YTD basis there have been 9,023 liquidations on Aave with a 7-day liquidation amount of approx. \$37mn \cite{dune}. Liquidations occur when the collateral that borrowers pledge suddenly drops in value. Borrowers, who fail to prevent LTV shortfalls face the risk of having their collateral liquidated and being penalized with liquidation fees. Moreover, commonly used incentive mechanisms tend to favor liquidators over borrowers, causing the problem of so called over-liquidation, leading to unnecessary high losses for borrowers \cite{qin}. In order to avoid liquidations, borrowers need to constantly monitor their LTV and remain alert to quickly respond to changing market conditions. When there are many users with a leveraged long position in the collateral currency, even a random dip in market prices can cause a whole cascade of liquidations, leading to a self-accelerating selling pressure. Such market situations may lead to network congestion and hiking gas costs, as has been the case in the \verb|ETH| market collapse of March 13th 2020 \cite{qin}, leaving some borrowers unable to react despite imminent liquidations. For borrowers who get liquidated it can be particularly annoying if market prices recover after a dip again, leaving them deprived from subsequent upward price participation.\\
+On a YTD basis there have been 9,023 liquidations on Aave with a 7-day liquidation amount of approx. \$37mn \cite{dune}. Liquidations occur when the collateral that borrowers pledge suddenly drops in value. Borrowers, who fail to prevent LTV shortfalls face the risk of having their collateral liquidated and being penalized with liquidation fees. Moreover, commonly used incentive mechanisms tend to favor liquidators over borrowers, causing the problem of so called over-liquidation, leading to unnecessary high losses for borrowers \cite{qin}. In order to avoid liquidations, borrowers need to constantly monitor their LTV and remain alert to quickly respond to changing market conditions. When there are many users with a leveraged long position in the collateral currency, even a random dip in market prices can cause a whole cascade of liquidations, leading to a self-accelerating selling pressure. Such market situations may lead to network congestion and spiking gas costs, as has been the case in the \verb|ETH| market collapse of March 13th 2020 \cite{qin}, leaving some borrowers unable to react despite imminent liquidations. For borrowers who get liquidated it can be particularly annoying if market prices recover after a dip again, leaving them deprived from subsequent upward price participation.\\
 %In times of heightened market stress, this can trigger a downward spiral in market prices. 
 
 
@@ -414,29 +414,38 @@ As described in \cref{sec:zero_liquididation_loans_and_vanilla_options}, a borro
 
 Let $Q_{\mathcal{C}}$ denote the quantity of crypto collateral and $Q_\mathcal{B}$ be the quantity of borrow currency one can borrow. Applying the constant product formula one can construct an AMM that swaps $Q_{\mathcal{C}}$ and $Q_\mathcal{B}$ according to
 \begin{equation}
+\label{eq:constant_product_amm}
 \begin{split}
 (Q_\mathcal{C}+\Delta Q_\mathcal{C})(Q_\mathcal{B}-\Delta Q_\mathcal{B}) &= k
 \end{split}
 \end{equation}
-, where $\Delta Q_\mathcal{C}$ and $\Delta Q_\mathcal{B}$ denote the corresponding quantity changes and $k$ an AMM constant. But how do these quantities relate to the quantities of options the borrower receives? Obviously, the borrower will want to have an option for every collateral unit he gives to the AMM. So if he gives $\Delta Q_{\mathcal{C}}$ units of $S$, he expects to receive the same quantity of $C_K$. Luckily, the AMM isn't per se limited on the number of options it can offer to borrowers. This is easy to see when considering that if $K=0$ the AMM can always write an option for every collateral unit $\Delta Q_{\mathcal{C}}$ it receives (this is because a call with strike zero is equal to the underlying).\\
+, where $\Delta Q_\mathcal{C}$ and $\Delta Q_\mathcal{B}$ denote the corresponding quantity changes and $k$ an AMM constant. But how do these quantities relate to the quantities of options the borrower receives? Obviously, the borrower will want to have an option for every collateral unit he gives to the AMM. So if he gives $\Delta Q_{\mathcal{C}}$ units of $S$, he expects to receive the same quantity of $C_K$. Luckily, the AMM isn't per se limited on the number of options it can offer to borrowers. This is easy to see when considering that if $K=0$ the AMM can always write an option for every collateral unit $\Delta Q_{\mathcal{C}}$ it receives (this is because a call with strike zero is equal to the underlying). The AMM shall therefore use the quantity $\Delta Q_{\mathcal{C}}$ to define two things at the same time: (i) the amount of collateral currency a borrower has to pledge, and, (ii) the number of call options he shall receive. The number of collateral units the borrower has to pledge shall be equal to the number of call options he shall receive, i.e.,
+\begin{equation}
+\begin{split}
+\Delta Q_{\mathcal{C}} = \textrm{collateral quantity} = \textrm{call option quantity}.
+\end{split}
+\end{equation}
+This means that the borrower has the option to reclaim all of his originally pledged collateral, which, as previously mentioned, is a desirable property.\\
 
 % So the relationship between $\Delta Q_{\mathcal{C}}$ and $\Delta Q_{\mathcal{B}}$ is not only used to determine the the amount users can borrow but as well the repayment amount, we will later refer to this as the \emph{implied strike price}, of the loan's implicitly embedded call option (see \cref{sec:combining_put_call_parity_with_AMM}).\\
 
-So in case there is increasing demand for borrowings the AMM should lower the borrowable amounts per collateral unit and, consequently, also lower the strike price at which borrowers can reclaim thei collateral, i.e.,
+Now from \cref{eq:constant_product_amm} it follows that in case there's an increasing demand for borrowings, then the AMM's inventory in collateral currency increases and in borrow currency decreases, which, ultimately leads to the borrowable amounts per collateral unit to become less, i.e., 
 \begin{equation}
 \label{eq:more_borrowing_strike}
 \begin{split}
-Q_{\mathcal{C}}\uparrow \Rightarrow Q_{\mathcal{B}}\downarrow \Rightarrow K\downarrow.
+Q_{\mathcal{C}}\uparrow \Rightarrow Q_{\mathcal{B}}\downarrow \Rightarrow \frac{\Delta Q_{\mathcal{B}}}{\Delta Q_{\mathcal{C}}} \downarrow.
 \end{split}
 \end{equation}
+This means that borrowers will receive less and less borrow currency for each collateral currency unit they pledge.\\
 
-And conversely, if there is more lending demand then there will be less collateral available to the AMM, but more borrow currency liquidity, which, in turn, should lead to higher strike prices, i.e.,
+Conversely, if there is more lending demand (i.e., the AMM acts as a borrower), then the AMM's inventory in collateral currency decreases and in borrow currency increases, which, in turn causes the borrowable amounts per collateral unit to increase, i.e.,
 \begin{equation}
 \label{eq:more_lending_strike}
 \begin{split}
-Q_{\mathcal{C}}\downarrow \Rightarrow Q_{\mathcal{B}}\uparrow \Rightarrow K\uparrow.
+Q_{\mathcal{C}}\downarrow \Rightarrow Q_{\mathcal{B}} \uparrow \Rightarrow \frac{\Delta Q_{\mathcal{B}}}{\Delta Q_{\mathcal{C}}} \uparrow.
 \end{split}
 \end{equation}
+This means that lenders will have to lend more and more for each collateral currency unit the AMM pledges.
 
 \subsection{Determining borrowing Costs}
 \label{sec:borrowing_costs}
@@ -444,7 +453,7 @@ As described in \cref{sec:zero_liquididation_loans_and_vanilla_options}, a user 
 \begin{equation}
 \label{eq:put_call_parity}
 \begin{split}
-\underbrace{C_K+K-P_K}_{\textrm{what borrower get}} = \underbrace{S}_{\textrm{what borrower gives}}
+\underbrace{C_K+K-P_K}_{\textrm{what borrower gets}} = \underbrace{S}_{\textrm{what borrower gives}}
 \end{split}
 \end{equation}
 where $P_K$ denotes the put option with strike price $K$. This means that, in order to make no party worse off, the borrower needs to pay the AMM the put option premium $P_K$. The price of the put option depends on several factors, most importantly on the option's strike price, its time to expiry and the underlying's volatility. However, instead of trying to determine a fair value for the put $P_K$, we will assume the put price $P_K\stackrel{!}{=}X$ is given and let the market infer the corresponding $K$ such that the following equality holds
@@ -490,15 +499,23 @@ R = \frac{X}{K-X}.
 
 \subsection{Combining Put-Call-Parity with Constant Product AMM}
 \label{sec:combining_put_call_parity_with_AMM}
-We can now combine the results from \cref{sec:determining_borrowable_amounts} and \cref{sec:borrowing_costs} to derive an AMM for zero-liquidation loans. If we define the strike price to equal $K=\frac{\Delta Q_\mathcal{B}}{\Delta Q_\mathcal{C}}$, it then follows from the put-call-parity\footnote{See \cref{eq:put_call_parity}} that the AMM swaps quantities in the borrow and collateral currency according to
+We can now combine the results from \cref{sec:determining_borrowable_amounts} and \cref{sec:borrowing_costs} to derive an AMM for zero-liquidation loans. If we define the strike price to equal $K=\frac{\Delta Q_\mathcal{B}}{\Delta Q_\mathcal{C}}$, it then follows from the put-call-parity\footnote{See \cref{eq:put_call_parity}} that the AMM should swap quantities in the borrow and collateral currency according to
 \begin{equation}
 \begin{split}
 C_{(\Delta Q_{\mathcal{B}}/\Delta Q_\mathcal{C})} + \frac{\Delta Q_{\mathcal{B}}}{\Delta Q_{\mathcal{C}}} - X &= S \\
 \Delta Q_\mathcal{C} \cdot C_{K} + \underbrace{\Delta Q_\mathcal{B} - \Delta Q_\mathcal{C} \cdot  X}_{\textrm{borrow currency}} &= \underbrace{\Delta Q_\mathcal{C} \cdot  S}_{\textrm{collateral currency}} \\
 \end{split}
 \end{equation}
-, meaning that when a user pledges $\Delta Q_\mathcal{C} \cdot S$ in the collateral currency (e.g., \verb|ETH|), he then receives $\Delta Q_\mathcal{B} - \Delta Q_\mathcal{C} \cdot X$ in the borrow currency (e.g., \verb|USDC|).
-%The last step is to chose the strike based on the quantities $\Delta Q_\mathcal{B}$ and $\Delta Q_\mathcal{C}$ determined by the constant product AMM, i.e., . We will refer to this as the \emph{implied strike} strike price. 
+, meaning that when a user pledges $\Delta Q_\mathcal{C} \cdot S$ in the collateral currency (e.g., \verb|ETH|), he then receives $\Delta Q_\mathcal{B} - \Delta Q_\mathcal{C} \cdot X$ in the borrow currency (e.g., \verb|USDC|).\\
+
+Applying the strike definition $K=\frac{\Delta Q_\mathcal{B}}{\Delta Q_\mathcal{C}}$ in the context of \cref{eq:more_borrowing_strike} and \cref{eq:more_lending_strike}, we can now also see how borrowing and lending demand stimulate the applicable strike price, i.e., 
+\begin{equation}
+\begin{split}
+Q_{\mathcal{C}}\uparrow& \Rightarrow Q_{\mathcal{B}}\downarrow \Rightarrow K \downarrow\\
+Q_{\mathcal{C}}\downarrow& \Rightarrow Q_{\mathcal{B}} \uparrow \Rightarrow K \uparrow
+\end{split}
+\end{equation}
+, which means that borrowers, cause the collateral currency inventory $Q_{\mathcal{C}}$ to increase, and, subsequently push the strike price downwards. And conversely, lenders cause the collateral currency inventory $Q_{\mathcal{C}}$ to decrease, and, hence, push the strike price upwards.
 
 \subsection{Arbitrage}
 \label{sec:arbitrage}
