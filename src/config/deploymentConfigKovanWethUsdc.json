@@ -1,13 +1,13 @@
 {
   "lp_duration": "100",
-  "amm_duration": "160000",
+  "amm_duration": "1888888",
   "settlement_duration": "160000",
-  "collateral_ccy": "0xd0a1e359811322d97991e03f863a0c30c2cf029c",
-  "borrow_ccy": "0xe22da380ee6b445bb8273c81944adeb6e8450422",
+  "collateral_ccy": "0x74e9a84d8e9d037a14f5e9efdfe84cbe38af370e",
+  "borrow_ccy": "0xFd048DFba225e1984ebAf30eBc41123D765A1236",
   "collateral_ccy_eq_factor": "2000",
   "borrow_ccy_eq_factor": "1000000000000",
   "alpha": "200000000000",
-  "init_collateral_price": "3500000000000000000000",
+  "init_collateral_price": "3500000000",
   "init_collateral_price_annualized_vol": "1000000000000",
   "blocks_per_year": "2372500",
   "decimals": "1000000000000"

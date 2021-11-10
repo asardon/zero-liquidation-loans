@@ -419,13 +419,13 @@ Let $Q_{\mathcal{C}}$ denote the quantity of crypto collateral and $Q_\mathcal{B
 (Q_\mathcal{C}+\Delta Q_\mathcal{C})(Q_\mathcal{B}-\Delta Q_\mathcal{B}) &= k
 \end{split}
 \end{equation}
-, where $\Delta Q_\mathcal{C}$ and $\Delta Q_\mathcal{B}$ denote the corresponding quantity changes and $k$ an AMM constant. But how do these quantities relate to the quantities of options the borrower receives? Obviously, the borrower will want to have an option for every collateral unit he gives to the AMM. So if he gives $\Delta Q_{\mathcal{C}}$ units of $S$, he expects to receive the same quantity of $C_K$. Luckily, the AMM isn't per se limited on the number of options it can offer to borrowers. This is easy to see when considering that if $K=0$ the AMM can always write an option for every collateral unit $\Delta Q_{\mathcal{C}}$ it receives (this is because a call with strike zero is equal to the underlying). The AMM shall therefore use the quantity $\Delta Q_{\mathcal{C}}$ to define two things at the same time: (i) the amount of collateral currency a borrower has to pledge, and, (ii) the number of call options he shall receive. The number of collateral units the borrower has to pledge shall be equal to the number of call options he shall receive, i.e.,
+, where $\Delta Q_\mathcal{C}$ and $\Delta Q_\mathcal{B}$ denote the corresponding quantity changes and $k$ an AMM constant. But how do these quantities relate to the quantities of options the borrower receives? For the borrower it is a desirable property to have an option for every collateral unit he gives to the AMM. So if he gives $\Delta Q_{\mathcal{C}}$ units of $S$, he expects to receive the same quantity of $C_K$. Luckily, the AMM isn't per se limited on the number of options it can offer to borrowers, as the offerable quantity will be only limited based on the chosen strike price. This is easy to see when considering that if $K=0$ the AMM can always write an option for every collateral unit $\Delta Q_{\mathcal{C}}$ it receives (this is because a call with strike zero is equal to the underlying). The quantity $\Delta Q_{\mathcal{C}}$ may therefore be used to define two things at the same time: (i) the amount of collateral currency a borrower has to pledge, and, (ii) the number of call options he shall receive, i.e.,
 \begin{equation}
 \begin{split}
-\Delta Q_{\mathcal{C}} = \textrm{collateral quantity} = \textrm{call option quantity}.
+\Delta Q_{\mathcal{C}} = \textrm{collateral quantity} = \textrm{call option quantity}
 \end{split}
 \end{equation}
-This means that the borrower has the option to reclaim all of his originally pledged collateral, which, as previously mentioned, is a desirable property.\\
+, which means that the borrower will have the option to reclaim all of his originally pledged collateral.\\
 
 % So the relationship between $\Delta Q_{\mathcal{C}}$ and $\Delta Q_{\mathcal{B}}$ is not only used to determine the the amount users can borrow but as well the repayment amount, we will later refer to this as the \emph{implied strike price}, of the loan's implicitly embedded call option (see \cref{sec:combining_put_call_parity_with_AMM}).\\
 
