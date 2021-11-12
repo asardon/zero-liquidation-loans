@@ -5,6 +5,7 @@ const deploymentConfig = require("../config/deploymentConfigTestMainnetForkWethU
 //const deploymentConfig = require("../config/deploymentConfigKovanLinkDai.json");
 //const deploymentConfig = require("../config/deploymentConfigKovanWethDai.json");
 //const deploymentConfig = require("../config/deploymentConfigKovanWethRai.json");
+//const deploymentConfig = require("../config/deploymentConfigKovanWethUsdc.json");
 
 console.log("Make sure to keep deploymentConfig up-to-date.")
 console.log("Current deploymentConfig:")

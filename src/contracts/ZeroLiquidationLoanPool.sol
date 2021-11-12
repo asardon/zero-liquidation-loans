@@ -64,14 +64,6 @@ contract ZeroLiquidationLoanPool is Ownable {
         uint256 blocks_per_year
     );
     event InitializeAMM();
-    event CloseLoan(
-        address borrower,
-        address lender,
-        uint256 loan_idx,
-        uint256 repayment_amount,
-        uint256 pledged_amount,
-        LoanState state
-    );
     event Borrow(
         address borrower,
         uint256 borrow_ccy_out_amount,
