@@ -30,12 +30,17 @@ whether to trigger repayments to lenders or not.
 ## AMM
 ### General Specification
 - Ownable (standard OZ) with one `Owner`, who can set AMM pricing parameters.
-- All calculations are done with a precision defined by `decimals`, e.g.,
-division of two values `a / b` is done in the form of
+- ERC20 (standard OZ), where each LP share is represented as ERC20 token.
+- ERC721 (based on OZ), where each loan is a non-fungible token defined by the
+individually pledged amount, repayment amount (=embedded option strike) and
+repayment date. Note that the corresponding meta-data is stored on-chain.
+- All calculations are done with a precision factor as defined by `decimals`,
+e.g., division of two values `a / b` is done in the form of
 `a * decimals / b / decimals`.
+- All time values are based in block time.
 
 ### AMM Phases
-The AMM can be in 1 of 4 phases:
+The AMM/liquidity pool is always in 1 of 4 phases:
 * LP-period: LPs can provide funds during this period. This period is indicated
 by the `lpPeriodActive` modifier.
 * Pending-initialization: after the LP period the AMM needs to be initialized
@@ -159,16 +164,67 @@ be steered by setting and applying smaller `alpha` values. The `alpha` value is
 set at deployment and can be updated by `Owner`.
 
 ### Functions
+#### Used by Owner / Maintainer:
 * Ownable function `transferOwnership(...)`
-* provide_liquidity_and_receive_shares
-* initialize_amm
-* borrow
-* lend
-* get_time_to_expiry
-* repay_loan_and_reclaim_collateral
-* amm_repay_loan_and_reclaim_collateral
-* reclaim_collateral
-* redeem_shares
+* `initialize_amm()`: called to initialize constant `k` of the constant-product
+formula and start market
+* `amm_repay_loan_and_reclaim_collateral(...)`: called to initiate repayment of
+a loan given by a lender, and reclaim reserved collateral for the liquidity pool
+* `update_oblivious_put_price_params(...)`: called to update the pricing
+parameters relevant for the interest cost / oblivious put price
+
+#### Used by Liquidity Providers:
+* `provide_liquidity_and_receive_shares(...)`: called by liquidity providers to
+commit `borrow_ccy` and `collateral_ccy` to pool and receive LP shares. Note
+that both currencies need to be supplied in the correct ratio
+* `redeem_shares(...)`: called to redeem shares for a pro-rata share of the
+funds held in the pool post-settlement
+
+### Used by Borrowers:
+* `get_borrowing_terms(...)`: called to determine the amount a borrower could
+borrow, and for which interest / repayment amount for a given quantity of
+collateral
+* `borrow(...)`: called to open a zero-liquidation loan; includes a minimum
+limit set by the borrower to specify the amount of `borrow_ccy` the borrower at
+least expects to receive, which is set in order to limit possible slippage
+* `repay_loan_and_reclaim_collateral(...)`: called to repay a loan and receive
+back the previously pledged collateral
+
+#### Used by Lenders:
+* `get_lending_terms(...)`: called to determine the required lending amount and
+repayment amount to be potentially received for a given notional amount set by
+the lender
+* `lend(...)`: called to lend funds to liquidity pool; includes a maximum limit
+set by the lender to specify the maximum `borrow_ccy` amount a lender is
+willing to lend to the pool. The limit is used in order to prevent unexpectedly
+high slippage
+* `reclaim_collateral(...)`: called to reclaim collateral, given that `Owner`
+hasn't repaid during the settlement-period
+
+#### Used internally:
+* `is_lp_period_active()`: used to flag LP-period
+* `is_pending_initialization()`: used to flag AMM-period, that is still missing
+initialization
+* `is_amm_period_active()`: used to flag active AMM-period
+* `is_settlement_period_active()`: used to flag settlement-period
+* `is_post_settlement_period_active()`: used to flag post-settlement-period
+* `get_time_to_expiry()`: called to get the remaining time to expiry (based on
+  block time)
+* `get_lp_borrow_ccy_amount(...)`: used to determine the amount of `borrow_ccy`
+a liquidity provider needs to provide to the pool for a given quantity of
+`collateral_ccy`
+* `get_lp_collateral_ccy_amount(...)`: used to determine the amount of
+`collateral_ccy` a liquidity provider needs to provide to the pool for a given
+quantity of `borrow_ccy`
+* `get_borrowable_amount(...)`: used to determine the amount of `borrow_ccy`
+per `collateral_ccy` according to the constant-product formula
+* `get_pledgeable_amount(...)`: used to determine the amount of
+`collateral_ccy` per `borrow_ccy` according to the constant-product formula
+* `get_interest_cost(...)`: used to get the applicable interest cost for a
+given quantity of pledged `collateral_ccy`
+* `get_oblivious_put_price(...)`: used to calculate the oblivious put price
+according to the Black-Scholes approximation of an ATM call (=put), scaled down
+by an `alpha` factor to approximate an out-of-the-money put price
 
 ### Events
 As indicated in the Ownable standard and as done in the OZ library.
@@ -179,5 +235,5 @@ On top of these, there are events for every `ProvideLiquidity`, `OpenLoan`,
 
 
 ### Library Code
-#### OpenZeppelin x.xx
-* Inherit from Ownable
+#### OpenZeppelin 3.3.0
+* Inherit from Ownable, ERC20 and ERC721
