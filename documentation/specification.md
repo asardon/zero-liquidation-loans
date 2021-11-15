@@ -180,7 +180,7 @@ that both currencies need to be supplied in the correct ratio
 * `redeem_shares(...)`: called to redeem shares for a pro-rata share of the
 funds held in the pool post-settlement
 
-### Used by Borrowers:
+#### Used by Borrowers:
 * `get_borrowing_terms(...)`: called to determine the amount a borrower could
 borrow, and for which interest / repayment amount for a given quantity of
 collateral
