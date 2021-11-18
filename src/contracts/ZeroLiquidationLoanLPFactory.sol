@@ -1,18 +1,15 @@
 pragma solidity ^0.6.12;
 
-import './ZeroLiquidationLoans.sol';
 import './ZeroLiquidationLoanLP.sol';
 import "@openzeppelin/contracts/proxy/Clones.sol";
 
 contract ZeroLiquidationLoanLPFactory {
     address immutable zeroLiquidationLoanLPImplementation;
     address[] public zeroLiquidationLoanLPs;
-    ZeroLiquidationLoans public zeroLiquidationLoans;
 
     constructor() public {
         zeroLiquidationLoanLPImplementation = address(new
             ZeroLiquidationLoanLP());
-        zeroLiquidationLoans = new ZeroLiquidationLoans();
     }
 
     function createLP(
