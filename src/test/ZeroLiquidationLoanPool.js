@@ -130,8 +130,8 @@ contract("ZeroLiquidationLoanPool", ([deployer, liquidity_provider_1,
     });
 
     it("must have initialized decimals correctly", async () => {
-      let decimals = await zeroLiquidationLoanPool.decimals();
-      expect(decimals.toString()).to.equal(deploymentConfig.decimals.
+      let calc_decimals = await zeroLiquidationLoanPool.calc_decimals();
+      expect(calc_decimals.toString()).to.equal(deploymentConfig.decimals.
         toString());
     });
 
@@ -791,16 +791,16 @@ contract("ZeroLiquidationLoanPool", ([deployer, liquidity_provider_1,
     });
 
     it("must calculate time to expiry correctly (1/2)", async () => {
-      let decimals = await zeroLiquidationLoanPool.decimals();
+      let calc_decimals = await zeroLiquidationLoanPool.calc_decimals();
       let lp_end = await zeroLiquidationLoanPool.lp_end();
       let amm_end = await zeroLiquidationLoanPool.amm_end();
       let block_number = new BN((await web3.eth.getBlock("latest")).number);
       let blocks_per_year = await zeroLiquidationLoanPool.blocks_per_year();
 
-      let time_to_expiry_exp = (amm_end.sub(block_number)).mul(decimals).div(
-        blocks_per_year);
+      let time_to_expiry_exp = (amm_end.sub(block_number)).mul(calc_decimals).
+        div(blocks_per_year);
       let time_to_expiry_sqrt_exp = Math.trunc(Math.sqrt(time_to_expiry_exp.
-        toNumber()*decimals.toNumber()));
+        toNumber()*calc_decimals.toNumber()));
       let res = await zeroLiquidationLoanPool.get_time_to_expiry();
 
       expect(res['0'].toString()).to.equal(time_to_expiry_exp.toString());
@@ -814,11 +814,11 @@ contract("ZeroLiquidationLoanPool", ([deployer, liquidity_provider_1,
         collateral_price_annualized_vol();
       let res = await zeroLiquidationLoanPool.get_time_to_expiry();
       let sqrt_time_to_expiry = res['1'];
-      let decimals = await zeroLiquidationLoanPool.decimals();
+      let calc_decimals = await zeroLiquidationLoanPool.calc_decimals();
 
       let oblivious_put_price_exp = alpha.mul(collateral_price).mul(
-        collateral_price_annualized_vol).mul(sqrt_time_to_expiry).div(decimals).
-        div(decimals).div(decimals);
+        collateral_price_annualized_vol).mul(sqrt_time_to_expiry).div(
+          calc_decimals).div(calc_decimals).div(calc_decimals);
       let oblivious_put_price = await zeroLiquidationLoanPool.
         get_oblivious_put_price(sqrt_time_to_expiry);
       expect(oblivious_put_price.toString()).to.equal(oblivious_put_price_exp.

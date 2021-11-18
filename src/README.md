@@ -1,9 +1,10 @@
 # Setup
 Make sure to use the following packages.
 ```
-npm -i @openzeppelin/contracts@3.3.0
+npm -i @openzeppelin/contracts@3.4.2
+npm -i @openzeppelin/contracts-upgradeable@3.4
 ```
-Note that `pragma solidity ^0.6.0;` is required.
+Note that `pragma solidity ^0.6.12` is required.
 
 ## Setup HD Wallet
 Use `npx mnemonics` to generate mnemonic. Then open `truffle console` and run

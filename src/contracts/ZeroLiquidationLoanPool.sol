@@ -1,16 +1,16 @@
-pragma solidity ^0.6.0;
+pragma solidity ^0.6.12;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import './utils/Math.sol';
 
+enum LoanState { OPEN, REPAID, RECLAIMED }
+enum PoolState { UNDEFINED, LP, PENDING_INITIALIZATION, AMM, SETTLEMENT, POST_SETTLMENT }
+
 contract ZeroLiquidationLoanPool is Ownable {
 
     using SafeMath for uint256;
-
-    enum LoanState { OPEN, REPAID, RECLAIMED }
-    enum PoolState { UNDEFINED, LP, PENDING_INITIALIZATION, AMM, SETTLEMENT, POST_SETTLMENT }
 
     uint256 public lp_end;
     uint256 public amm_end;
@@ -23,7 +23,7 @@ contract ZeroLiquidationLoanPool is Ownable {
     uint256 public collateral_price;
     uint256 public collateral_price_annualized_vol;
     uint256 public blocks_per_year;
-    uint256 public decimals;
+    uint256 public calc_decimals;
     uint256 public amm_constant;
     uint256 public total_pool_shares;
     uint256 public collateral_ccy_supply;
@@ -119,7 +119,7 @@ contract ZeroLiquidationLoanPool is Ownable {
         uint256 _init_collateral_price,
         uint256 _init_collateral_price_annualized_vol,
         uint256 _blocks_per_year,
-        uint256 _decimals
+        uint256 _calc_decimals
     )
         public
     {
@@ -136,7 +136,7 @@ contract ZeroLiquidationLoanPool is Ownable {
             "_init_collateral_price_annualiratiozed_vol must be > 0"
         );
         require(_blocks_per_year > 0, "_blocks_per_year must be > 0");
-        require(_decimals > 0, "_decimals must be > 0");
+        require(_calc_decimals > 0, "_calc_decimals must be > 0");
 
         lp_end = block.number.add(_lp_duration);
         amm_end = lp_end.add(_amm_duration);
@@ -149,7 +149,7 @@ contract ZeroLiquidationLoanPool is Ownable {
         collateral_price = _init_collateral_price;
         collateral_price_annualized_vol = _init_collateral_price_annualized_vol;
         blocks_per_year = _blocks_per_year;
-        decimals = _decimals;
+        calc_decimals = _calc_decimals;
     }
 
     modifier lpPeriodActive {
@@ -226,15 +226,16 @@ contract ZeroLiquidationLoanPool is Ownable {
     function get_lp_borrow_ccy_amount(uint256 collateral_ccy_amount)
         public view returns (uint256)
     {
-        return collateral_ccy_amount.mul(decimals).mul(
-            collateral_ccy_eq_factor).div(borrow_ccy_eq_factor).div(decimals);
+        return collateral_ccy_amount.mul(calc_decimals).mul(
+            collateral_ccy_eq_factor).div(borrow_ccy_eq_factor).div(
+                calc_decimals);
     }
 
     function get_lp_collateral_ccy_amount(uint256 borrow_ccy_amount)
         public view returns (uint256)
     {
-        return borrow_ccy_amount.mul(decimals).mul(borrow_ccy_eq_factor).div(
-            collateral_ccy_eq_factor).div(decimals);
+        return borrow_ccy_amount.mul(calc_decimals).mul(borrow_ccy_eq_factor
+            ).div(collateral_ccy_eq_factor).div(calc_decimals);
     }
 
     function provide_liquidity_and_receive_shares(
@@ -416,10 +417,10 @@ contract ZeroLiquidationLoanPool is Ownable {
             uint256 sqrt_time_to_expiry
         )
     {
-        uint256 _time_to_expiry = amm_end.sub(block.number).mul(decimals).div(
-            blocks_per_year);
-        uint256 _sqrt_time_to_expiry = Math.sqrt(_time_to_expiry.mul(decimals)
-        );
+        uint256 _time_to_expiry = amm_end.sub(block.number).mul(
+            calc_decimals).div(blocks_per_year);
+        uint256 _sqrt_time_to_expiry = Math.sqrt(_time_to_expiry.mul(
+            calc_decimals));
         return (_time_to_expiry, _sqrt_time_to_expiry);
     }
 
@@ -522,11 +523,11 @@ contract ZeroLiquidationLoanPool is Ownable {
         require(pool_shares[msg.sender] > 0, "User must hold > 0 shares");
         uint256 _pool_shares = pool_shares[msg.sender];
         uint256 pro_rata_collateral_ccy_share = collateral_ccy_supply.mul(
-            _pool_shares).mul(decimals).div(total_pool_shares).div(
-            decimals);
+            _pool_shares).mul(calc_decimals).div(total_pool_shares).div(
+            calc_decimals);
         uint256 pro_rata_borrow_ccy_share = borrow_ccy_supply.mul(
-            _pool_shares).mul(decimals).div(total_pool_shares).div(
-            decimals);
+            _pool_shares).mul(calc_decimals).div(total_pool_shares).div(
+            calc_decimals);
         collateral_ccy_token.transfer(
             msg.sender,
             pro_rata_collateral_ccy_share
@@ -586,7 +587,7 @@ contract ZeroLiquidationLoanPool is Ownable {
     {
         return alpha.mul(collateral_price).mul(
             collateral_price_annualized_vol).mul(sqrt_time_to_expiry).div(
-            decimals).div(decimals).div(decimals);
+            calc_decimals).div(calc_decimals).div(calc_decimals);
     }
 
     function update_oblivious_put_price_params(
